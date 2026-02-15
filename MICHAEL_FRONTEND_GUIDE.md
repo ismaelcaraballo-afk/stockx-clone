@@ -32,10 +32,11 @@ Make sure PostgreSQL is running, then:
 ```bash
 cd server
 createdb stockx_clone
+psql -d stockx_clone -f schema.sql
 npm run seed
 ```
 
-This creates the tables and loads 8 sample sneakers.
+This creates the tables and loads **27 sample sneakers** across 8 brands (Nike, Adidas, New Balance, Converse, Vans, Puma, Reebok, ASICS) with 5 demo users, randomized bids/asks, and sample completed orders for price history.
 
 ### 4. Start Both Servers
 
@@ -57,35 +58,78 @@ You should see: `Local: http://localhost:3000/`
 
 Open **http://localhost:3000** in your browser. You should see sneakers.
 
+### 5. Run Tests (optional but recommended)
+
+```bash
+cd server
+createdb stockx_clone_test
+psql -d stockx_clone_test -f schema.sql
+npm test
+```
+
+You should see: **52 tests passing, 4 suites** (auth, products, bids, orders).
+
 ---
 
 ## Project Structure (Your Files)
 
 ```
 client/src/
-├── App.jsx                  — Router (don't touch unless adding pages)
+├── App.jsx                  — Router with ProtectedRoute (don't touch unless adding pages)
 ├── api.js                   — API helper with auth (don't touch)
 ├── index.css                — Global styles (dark theme base)
 ├── main.jsx                 — Entry point (don't touch)
 │
 ├── components/
-│   ├── Navbar.jsx           — Top navigation bar
+│   ├── Navbar.jsx           — Top navigation bar (has Sell + Logout)
 │   ├── Navbar.module.css
 │   ├── ProductCard.jsx      — Sneaker card in the browse grid
 │   ├── ProductCard.module.css
 │   ├── SearchBar.jsx        — Search input
-│   └── SearchBar.module.css
+│   ├── SearchBar.module.css
+│   ├── Skeleton.jsx         — Loading skeleton components (CardSkeleton, DetailSkeleton)
+│   ├── ProtectedRoute.jsx   — Auth guard wrapper (redirects to /login if not logged in)
+│   ├── Viewer3D.jsx         — 3D shoe viewer (React Three Fiber) ← Ismael built
+│   ├── Viewer3D.module.css
+│   ├── ARCamera.jsx         — AR camera mode with surface detection ← Ismael built
+│   └── ARCamera.module.css
 │
 └── pages/
-    ├── Home.jsx             — Browse page (grid + filters)
+    ├── Home.jsx             — Browse page (grid + brand filters + sort dropdown + skeletons)
     ├── Home.module.css
-    ├── ProductDetail.jsx    — Single product view + bid/ask
+    ├── ProductDetail.jsx    — Single product view + 3D/AR + bid/ask + Buy Now/Sell Now
     ├── ProductDetail.module.css
-    ├── Dashboard.jsx        — User's listings, bids, orders
+    ├── Dashboard.jsx        — User's listings, bids, orders (with cancel/delete)
     ├── Dashboard.module.css
+    ├── Sell.jsx             — Create new listing form
+    ├── Sell.module.css
     ├── Login.jsx            — Login/signup form
     └── Login.module.css
 ```
+
+---
+
+## What's Already Built (Don't Rebuild These)
+
+Ismael has already implemented these features — you can style them but don't rewrite the logic:
+
+- **3D Viewer** (`Viewer3D.jsx`) — 5 colorways, 5 preset angles, auto-spin, OrbitControls
+- **AR Camera** (`ARCamera.jsx`) — Full AR try-on with:
+  - Surface detection simulation (scanning → detected → shoe placed on surface)
+  - Multi-shoe comparison (place 2 shoes side by side, different colorways)
+  - Touch drag, pinch zoom, two-finger rotation
+  - Camera flip (front/rear), freeze frame, screenshot
+  - 360 auto-spin, first-time hint overlay
+- **Loading Skeletons** (`Skeleton.jsx`) — CardGridSkeleton, DetailSkeleton with shimmer
+- **ProtectedRoute** — wraps Dashboard and Sell pages
+- **Sort dropdown** — already in Home.jsx (price asc/desc/newest)
+- **Brand filter buttons** — already in Home.jsx (All, Nike, Adidas, New Balance, etc.)
+- **Buy Now / Sell Now** — already in ProductDetail.jsx
+- **Cancel bid / Delete listing** — already in Dashboard.jsx
+- **Image fallback** — broken image URLs show a placeholder SVG
+- **Price history & stats** — shown on ProductDetail (avg, min, max, total sales, last sale)
+- **Input validation** — backend validates all inputs (name length, price range, etc.)
+- **Rate limiting** — backend has rate limits on auth and bid endpoints
 
 ---
 
@@ -128,66 +172,75 @@ All requests go through `/api/...` — the Vite proxy forwards them to the backe
 | POST | `/api/auth/guest` | none | `{ token, user }` |
 
 ### Products
-| Method | Endpoint | Params | Response |
-|--------|----------|--------|----------|
-| GET | `/api/products` | `?search=&brand=&category=&sort=price_asc` | `[products]` |
-| GET | `/api/products/:id` | — | `{ product }` |
-| POST | `/api/products` | `{ name, brand, description, image_url, retail_price, size, category }` | `{ product }` (needs auth) |
+| Method | Endpoint | Params/Body | Response |
+|--------|----------|-------------|----------|
+| GET | `/api/products` | `?search=&brand=&category=&sort=price_asc&limit=20&offset=0` | `[products]` |
+| GET | `/api/products/:id` | — | `{ product }` with `seller_name` |
+| GET | `/api/products/:id/history` | — | `{ history, stats, lastSale }` |
+| POST | `/api/products` | `{ name, brand, description, image_url, retail_price, size, category }` | `{ product }` (auth) |
+| DELETE | `/api/products/:id` | — | `{ message }` (auth, seller only) |
 
 ### Bids
 | Method | Endpoint | Body | Response |
 |--------|----------|------|----------|
 | GET | `/api/bids/product/:id` | — | `{ bids, highestBid, lowestAsk }` |
-| GET | `/api/bids/mine` | — | `[bids]` (needs auth) |
-| POST | `/api/bids/bid` | `{ product_id, amount }` | `{ bid, matched, order? }` (needs auth) |
-| POST | `/api/bids/ask` | `{ product_id, amount }` | `{ ask, matched, order? }` (needs auth) |
+| GET | `/api/bids/mine` | — | `[bids]` with `product_name`, `image_url` (auth) |
+| POST | `/api/bids/bid` | `{ product_id, amount }` | `{ bid, matched, order? }` (auth) |
+| POST | `/api/bids/ask` | `{ product_id, amount }` | `{ ask, matched, order? }` (auth) |
+| DELETE | `/api/bids/:id` | — | `{ message, bid }` (auth, owner only) |
 
 ### Orders & User
 | Method | Endpoint | Response |
 |--------|----------|----------|
-| GET | `/api/orders` | `[orders]` (needs auth) |
-| GET | `/api/users/me` | `{ user }` (needs auth) |
-| GET | `/api/users/me/listings` | `[products]` (needs auth) |
+| GET | `/api/orders` | `[orders]` with `product_name`, `buyer_name`, `seller_name` (auth) |
+| GET | `/api/users/me` | `{ user }` (auth) |
+| GET | `/api/users/me/listings` | `[products]` (auth) |
 
-**"Needs auth"** means the request must include a token. The `api.js` file handles this automatically — just use `import api from '../api.js'` instead of raw `axios`.
+**"auth"** means the request must include a token. The `api.js` file handles this automatically — just use `import api from '../api.js'` instead of raw `axios`.
 
 ---
 
 ## Your Task List by Day
 
 ### Day 1 — Get Set Up + Understand the Code
-- [ ] Clone repo, install, run both servers
-- [ ] Open http://localhost:3000 and click around
+- [ ] Clone repo, install, run both servers, run tests
+- [ ] Open http://localhost:3000 and click around — try all pages
 - [ ] Read through every file in `client/src/` — understand how data flows
-- [ ] Sign up an account via the Login page, verify it works
+- [ ] Sign up an account, create a listing, place a bid, check dashboard
+- [ ] Try the 3D viewer and AR camera on a product page
 - [ ] Create a branch: `git checkout -b michael/frontend`
 
-### Day 2 — Polish the Browse Page
+### Day 2 — Polish the Browse Page + Product Cards
 - [ ] **Home.jsx** — Make the product grid responsive and clean
 - [ ] **ProductCard.jsx** — Add hover animations (scale, shadow, border glow)
-- [ ] **SearchBar.jsx** — Add a sort dropdown (Price Low-High, Price High-Low, Newest)
-- [ ] Add brand filter buttons that highlight when active
+- [ ] Style the existing brand filter buttons to look more polished
+- [ ] Style the sort dropdown to match the dark theme
 - [ ] Make it look like StockX (reference: stockx.com)
+- [ ] Make sure loading skeletons look good (already wired up)
 
 ### Day 3 — Product Detail + Bid/Ask UX
-- [ ] **ProductDetail.jsx** — Polish the layout (image left, info right)
+- [ ] **ProductDetail.jsx** — Polish the layout (image left, info right on desktop)
 - [ ] Style the bid/ask buttons to look like StockX (green for Buy, red for Sell)
-- [ ] Add success/error feedback when placing a bid or ask
-- [ ] Add a "Buy Now" shortcut that auto-bids at the lowest ask price
-- [ ] Add loading spinners while data is fetching
+- [ ] Style the Buy Now / Sell Now buttons (already wired up)
+- [ ] Add success/error toast or feedback when placing a bid/ask
+- [ ] Style the price history section and stats row
+- [ ] Style the 3D/AR view toggle buttons
+- [ ] Make sure image fallback placeholder looks clean
 
-### Day 4 — Dashboard + Login + Responsive
-- [ ] **Dashboard.jsx** — Style the tabs, add icons or counts
+### Day 4 — Dashboard + Login + Sell + Responsive
+- [ ] **Dashboard.jsx** — Style the tabs (My Listings / My Bids / Orders)
+- [ ] Style cancel bid and delete listing buttons (already functional)
 - [ ] **Login.jsx** — Make it clean and centered
+- [ ] **Sell.jsx** — Style the create listing form, image preview
 - [ ] Make ALL pages responsive (looks good on phone screens)
-- [ ] Add a logout button to the Navbar
 - [ ] Add empty states (no bids yet, no orders yet) with helpful messages
 
 ### Day 5 — Final Polish + Presentation
-- [ ] Fix any visual bugs
-- [ ] Test the full flow: signup → browse → bid → check dashboard
-- [ ] Help Ismael integrate the 3D viewer styling
-- [ ] Prep for presentation
+- [ ] Fix any visual bugs across all pages
+- [ ] Test the full flow: signup → browse → bid → check dashboard → create listing
+- [ ] Test AR on mobile (surface detection + compare mode)
+- [ ] Help with presentation slides/talking points
+- [ ] Make sure everything is committed and pushed
 
 ---
 
@@ -196,6 +249,14 @@ All requests go through `/api/...` — the Vite proxy forwards them to the backe
 **ALWAYS work on your branch:**
 ```bash
 git checkout -b michael/frontend
+```
+
+**Pull latest changes from Ismael before starting work:**
+```bash
+git checkout main
+git pull origin main
+git checkout michael/frontend
+git merge main
 ```
 
 **Save your work often:**
@@ -238,6 +299,17 @@ if (user) {
 import { useNavigate } from 'react-router-dom'
 const navigate = useNavigate()
 navigate('/product/5')
+```
+
+### Using the loading skeletons:
+```jsx
+import { CardGridSkeleton, DetailSkeleton } from '../components/Skeleton.jsx'
+
+// While loading:
+if (loading) return <CardGridSkeleton />
+
+// For product detail:
+if (loading) return <DetailSkeleton />
 ```
 
 ---
