@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '../api.js'
 import Viewer3D from '../components/Viewer3D.jsx'
 import ARCamera from '../components/ARCamera.jsx'
+import { DetailSkeleton } from '../components/Skeleton.jsx'
 import styles from './ProductDetail.module.css'
 
 const PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" fill="#333"><rect width="300" height="300" fill="#1a1a1a"/><text x="150" y="150" text-anchor="middle" dy=".3em" font-size="16" fill="#555" font-family="sans-serif">No Image</text></svg>')
@@ -87,7 +88,7 @@ export default function ProductDetail() {
     }
   }
 
-  if (!product) return <div className={styles.loading}>Loading...</div>
+  if (!product) return <DetailSkeleton />
 
   const isOwner = user && user.id === product.seller_id
 
