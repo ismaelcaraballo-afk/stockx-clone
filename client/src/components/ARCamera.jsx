@@ -12,12 +12,58 @@ const COLORWAYS = [
   { name: 'Bred', items: { laces: '#111', mesh: '#111', caps: '#d32f2f', inner: '#111', sole: '#d32f2f', stripes: '#d32f2f', band: '#d32f2f', patch: '#111' } },
 ]
 
-function ARShoe({ position, scale, colorway, visible }) {
+// Grid floor plane that simulates surface detection
+function SurfaceGrid({ position, detected }) {
+  const ref = useRef()
+  const [opacity, setOpacity] = useState(0)
+
+  useFrame((_, delta) => {
+    if (!ref.current) return
+    // Fade in when detected, fade out when not
+    const target = detected ? 0.35 : 0
+    setOpacity(o => THREE.MathUtils.lerp(o, target, delta * 3))
+    ref.current.material.opacity = opacity
+  })
+
+  return (
+    <mesh ref={ref} rotation-x={-Math.PI / 2} position={[position[0], position[1] - 0.01, position[2]]}>
+      <planeGeometry args={[6, 6]} />
+      <meshBasicMaterial color="#08a05c" transparent opacity={0} side={THREE.DoubleSide} wireframe />
+    </mesh>
+  )
+}
+
+// Scanning animation ring that pulses outward during detection
+function ScanRing({ active, position }) {
+  const ref = useRef()
+  const [scale, setScale] = useState(0.5)
+
+  useFrame((_, delta) => {
+    if (!ref.current || !active) return
+    setScale(s => {
+      const next = s + delta * 1.5
+      return next > 3 ? 0.5 : next
+    })
+    ref.current.scale.set(scale, scale, 1)
+    ref.current.material.opacity = Math.max(0, 1 - scale / 3) * 0.5
+  })
+
+  if (!active) return null
+
+  return (
+    <mesh ref={ref} rotation-x={-Math.PI / 2} position={[position[0], position[1] + 0.01, position[2]]}>
+      <ringGeometry args={[0.8, 1, 32]} />
+      <meshBasicMaterial color="#08a05c" transparent opacity={0.5} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
+function ARShoe({ id, position, scale, colorway, visible, rotation, spinning, isActive, onTap }) {
   const ref = useRef()
   const { nodes, materials } = useGLTF('/models/shoe.glb')
   const [opacity, setOpacity] = useState(0)
+  const materialRefs = useRef([])
 
-  // Entrance animation — fade in and slight bounce
   useFrame((state, delta) => {
     if (!ref.current) return
     if (opacity < 1) {
@@ -25,10 +71,14 @@ function ARShoe({ position, scale, colorway, visible }) {
       ref.current.scale.setScalar(scale * opacity)
       ref.current.position.y = position[1] + (1 - opacity) * 0.3
     } else {
-      // Subtle floating animation
+      ref.current.scale.setScalar(scale)
       const t = state.clock.getElapsedTime()
       ref.current.position.y = position[1] + Math.sin(t * 1.5) * 0.02
     }
+
+    ref.current.rotation.x = 0.3
+    ref.current.rotation.y = rotation + (spinning ? state.clock.getElapsedTime() * 2 : 0)
+    ref.current.rotation.z = 0
   })
 
   if (!visible) return null
@@ -36,7 +86,19 @@ function ARShoe({ position, scale, colorway, visible }) {
   const c = colorway.items
 
   return (
-    <group ref={ref} position={position} rotation={[0.3, 0.8, 0]} scale={scale}>
+    <group
+      ref={ref}
+      position={position}
+      scale={scale}
+      onClick={(e) => { e.stopPropagation(); if (onTap) onTap(id) }}
+    >
+      {/* Active selection ring */}
+      {isActive && (
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.15, 0]}>
+          <ringGeometry args={[0.35, 0.4, 32]} />
+          <meshBasicMaterial color="#08a05c" transparent opacity={0.6} />
+        </mesh>
+      )}
       <mesh geometry={nodes.shoe.geometry} material={materials.laces} material-color={c.laces} />
       <mesh geometry={nodes.shoe_1.geometry} material={materials.mesh} material-color={c.mesh} />
       <mesh geometry={nodes.shoe_2.geometry} material={materials.caps} material-color={c.caps} />
@@ -49,17 +111,17 @@ function ARShoe({ position, scale, colorway, visible }) {
   )
 }
 
-// Handles touch/mouse drag to move the shoe in screen space
-function DragControls({ onDrag, onPinch }) {
-  const { gl, camera, size } = useThree()
+// Handles touch/mouse drag, pinch zoom, and two-finger rotation
+function DragControls({ onDrag, onPinch, onRotate }) {
+  const { gl, size } = useThree()
   const dragging = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
   const lastPinchDist = useRef(0)
+  const lastAngle = useRef(0)
 
   useEffect(() => {
     const canvas = gl.domElement
 
-    // Mouse drag
     const onMouseDown = (e) => {
       dragging.current = true
       lastPos.current = { x: e.clientX, y: e.clientY }
@@ -73,11 +135,17 @@ function DragControls({ onDrag, onPinch }) {
     }
     const onMouseUp = () => { dragging.current = false }
 
-    // Touch drag + pinch
     const getTouchDist = (touches) => {
       const dx = touches[0].clientX - touches[1].clientX
       const dy = touches[0].clientY - touches[1].clientY
       return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    const getTouchAngle = (touches) => {
+      return Math.atan2(
+        touches[1].clientY - touches[0].clientY,
+        touches[1].clientX - touches[0].clientX
+      )
     }
 
     const onTouchStart = (e) => {
@@ -86,6 +154,7 @@ function DragControls({ onDrag, onPinch }) {
         lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
       } else if (e.touches.length === 2) {
         lastPinchDist.current = getTouchDist(e.touches)
+        lastAngle.current = getTouchAngle(e.touches)
       }
     }
     const onTouchMove = (e) => {
@@ -97,9 +166,16 @@ function DragControls({ onDrag, onPinch }) {
         lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
       } else if (e.touches.length === 2) {
         const dist = getTouchDist(e.touches)
-        const delta = dist - lastPinchDist.current
-        onPinch(delta * 0.01)
+        const pinchDelta = dist - lastPinchDist.current
+        onPinch(pinchDelta * 0.01)
         lastPinchDist.current = dist
+
+        const angle = getTouchAngle(e.touches)
+        const angleDelta = angle - lastAngle.current
+        if (Math.abs(angleDelta) < Math.PI) {
+          onRotate(angleDelta)
+        }
+        lastAngle.current = angle
       }
     }
     const onTouchEnd = () => { dragging.current = false }
@@ -119,7 +195,7 @@ function DragControls({ onDrag, onPinch }) {
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
     }
-  }, [gl, size, onDrag, onPinch])
+  }, [gl, size, onDrag, onPinch, onRotate])
 
   return null
 }
@@ -130,86 +206,197 @@ export default function ARCamera({ onClose }) {
   const streamRef = useRef(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [error, setError] = useState(null)
-  const [shoePos, setShoePos] = useState([0, -0.3, 0])
-  const [scale, setScale] = useState(2.5)
-  const [colorway, setColorway] = useState(COLORWAYS[0])
   const [frozen, setFrozen] = useState(false)
-  const [showShoe, setShowShoe] = useState(false)
   const [captureFlash, setCaptureFlash] = useState(false)
+  const [facingMode, setFacingMode] = useState('environment')
+  const [showHints, setShowHints] = useState(true)
 
-  // Start camera
+  // Surface detection simulation
+  const [surfaceState, setSurfaceState] = useState('scanning') // 'scanning' | 'detected' | 'placed'
+  const [surfaceY, setSurfaceY] = useState(-0.5)
+
+  // Multi-shoe state: array of shoe objects
+  const [shoes, setShoes] = useState([
+    { id: 1, pos: [0, -0.3, 0], scale: 2.5, rotation: 0.8, spinning: false, colorway: COLORWAYS[0], visible: false }
+  ])
+  const [activeShoeId, setActiveShoeId] = useState(1)
+  const nextId = useRef(2)
+
+  // Simulate surface detection: scanning for 2s, then detected
   useEffect(() => {
-    let cancelled = false
+    if (surfaceState === 'scanning') {
+      const timer = setTimeout(() => setSurfaceState('detected'), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [surfaceState])
+
+  // Once surface detected, place shoe on it
+  useEffect(() => {
+    if (surfaceState === 'detected') {
+      const timer = setTimeout(() => {
+        setSurfaceState('placed')
+        // Make first shoe visible, snap to surface
+        setShoes(prev => prev.map(s => s.id === 1 ? { ...s, visible: true, pos: [0, surfaceY, 0] } : s))
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [surfaceState, surfaceY])
+
+  // Get the active shoe
+  const activeShoe = shoes.find(s => s.id === activeShoeId) || shoes[0]
+
+  // Add a second shoe for comparison
+  const addCompareShoe = useCallback(() => {
+    if (shoes.length >= 2) return // max 2
+    const id = nextId.current++
+    const offset = 1.2 // place to the right of active shoe
+    const newShoe = {
+      id,
+      pos: [activeShoe.pos[0] + offset, surfaceY, activeShoe.pos[2]],
+      scale: 2.5,
+      rotation: 0.8,
+      spinning: false,
+      colorway: COLORWAYS[1], // default to a different colorway
+      visible: true,
+    }
+    setShoes(prev => [...prev, newShoe])
+    setActiveShoeId(id)
+  }, [shoes, activeShoe, surfaceY])
+
+  // Remove the compare shoe
+  const removeCompareShoe = useCallback(() => {
+    if (shoes.length <= 1) return
+    const removeId = shoes.find(s => s.id !== 1)?.id
+    if (removeId) {
+      setShoes(prev => prev.filter(s => s.id !== removeId))
+      setActiveShoeId(1)
+    }
+  }, [shoes])
+
+  // Update active shoe property
+  const updateActiveShoe = useCallback((updates) => {
+    setShoes(prev => prev.map(s => s.id === activeShoeId ? { ...s, ...updates } : s))
+  }, [activeShoeId])
+
+  // Start camera (supports flipping)
+  const startCamera = useCallback((facing) => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+    }
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment', width: 1280, height: 720 } })
+      .getUserMedia({ video: { facingMode: facing, width: 1280, height: 720 } })
       .then((stream) => {
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
         streamRef.current = stream
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play()
+        }
         setCameraReady(true)
-        // Delay shoe appearance for entrance animation
-        setTimeout(() => setShowShoe(true), 500)
       })
       .catch(() => {
         navigator.mediaDevices
           .getUserMedia({ video: true })
           .then((stream) => {
-            if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
             streamRef.current = stream
-            videoRef.current.srcObject = stream
-            videoRef.current.play()
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream
+              videoRef.current.play()
+            }
             setCameraReady(true)
-            setTimeout(() => setShowShoe(true), 500)
           })
           .catch(() => setError('Camera access denied. Please allow camera permissions.'))
       })
+  }, [])
 
+  useEffect(() => {
+    startCamera(facingMode)
     return () => {
-      cancelled = true
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
       }
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-dismiss hints after 4 seconds
+  useEffect(() => {
+    if (showHints && surfaceState === 'placed') {
+      const timer = setTimeout(() => setShowHints(false), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [showHints, surfaceState])
+
+  // Flip camera
+  const flipCamera = useCallback(() => {
+    const newMode = facingMode === 'environment' ? 'user' : 'environment'
+    setFacingMode(newMode)
+    startCamera(newMode)
+  }, [facingMode, startCamera])
+
+  // Toggle spin for active shoe
+  const toggleSpin = useCallback(() => {
+    updateActiveShoe({ spinning: !activeShoe.spinning })
+  }, [activeShoe, updateActiveShoe])
 
   // Keyboard controls
   const handleKey = useCallback((e) => {
     const step = 0.1
     switch (e.key) {
-      case 'ArrowUp': setShoePos(p => [p[0], p[1] + step, p[2]]); break
-      case 'ArrowDown': setShoePos(p => [p[0], p[1] - step, p[2]]); break
-      case 'ArrowLeft': setShoePos(p => [p[0] - step, p[1], p[2]]); break
-      case 'ArrowRight': setShoePos(p => [p[0] + step, p[1], p[2]]); break
-      case '+': case '=': setScale(s => Math.min(s + 0.2, 6)); break
-      case '-': case '_': setScale(s => Math.max(s - 0.2, 0.5)); break
+      case 'ArrowUp': updateActiveShoe({ pos: [activeShoe.pos[0], activeShoe.pos[1] + step, activeShoe.pos[2]] }); break
+      case 'ArrowDown': updateActiveShoe({ pos: [activeShoe.pos[0], activeShoe.pos[1] - step, activeShoe.pos[2]] }); break
+      case 'ArrowLeft': updateActiveShoe({ pos: [activeShoe.pos[0] - step, activeShoe.pos[1], activeShoe.pos[2]] }); break
+      case 'ArrowRight': updateActiveShoe({ pos: [activeShoe.pos[0] + step, activeShoe.pos[1], activeShoe.pos[2]] }); break
+      case '+': case '=': updateActiveShoe({ scale: Math.min(activeShoe.scale + 0.2, 6) }); break
+      case '-': case '_': updateActiveShoe({ scale: Math.max(activeShoe.scale - 0.2, 0.5) }); break
       case ' ': setFrozen(f => !f); e.preventDefault(); break
+      case 'r': case 'R': updateActiveShoe({ rotation: activeShoe.rotation + 0.3 }); break
+      case 'f': case 'F': flipCamera(); break
+      case 's': case 'S': toggleSpin(); break
+      case 'c': case 'C': if (shoes.length < 2) addCompareShoe(); break
+      case 'Tab':
+        e.preventDefault()
+        if (shoes.length > 1) {
+          const ids = shoes.map(s => s.id)
+          const idx = ids.indexOf(activeShoeId)
+          setActiveShoeId(ids[(idx + 1) % ids.length])
+        }
+        break
       case 'Escape': onClose(); break
     }
-  }, [onClose])
+  }, [onClose, flipCamera, toggleSpin, activeShoe, updateActiveShoe, shoes, activeShoeId, addCompareShoe])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [handleKey])
 
-  // Drag handler
+  // Drag handler — moves active shoe
   const handleDrag = useCallback((dx, dy) => {
-    setShoePos(p => [p[0] + dx, p[1] + dy, p[2]])
-  }, [])
+    setShoes(prev => prev.map(s => s.id === activeShoeId
+      ? { ...s, pos: [s.pos[0] + dx, s.pos[1] + dy, s.pos[2]] }
+      : s
+    ))
+  }, [activeShoeId])
 
   // Pinch handler
   const handlePinch = useCallback((delta) => {
-    setScale(s => Math.max(0.5, Math.min(6, s + delta)))
-  }, [])
+    setShoes(prev => prev.map(s => s.id === activeShoeId
+      ? { ...s, scale: Math.max(0.5, Math.min(6, s.scale + delta)) }
+      : s
+    ))
+  }, [activeShoeId])
+
+  // Rotation gesture handler
+  const handleRotate = useCallback((angleDelta) => {
+    setShoes(prev => prev.map(s => s.id === activeShoeId
+      ? { ...s, rotation: s.rotation + angleDelta }
+      : s
+    ))
+  }, [activeShoeId])
 
   // Freeze / unfreeze camera
   const toggleFreeze = () => {
-    if (!frozen && videoRef.current) {
-      videoRef.current.pause()
-    } else if (frozen && videoRef.current) {
-      videoRef.current.play()
-    }
+    if (!frozen && videoRef.current) videoRef.current.pause()
+    else if (frozen && videoRef.current) videoRef.current.play()
     setFrozen(!frozen)
   }
 
@@ -220,31 +407,22 @@ export default function ARCamera({ onClose }) {
       overlay.width = window.innerWidth
       overlay.height = window.innerHeight
       const ctx = overlay.getContext('2d')
-
-      // Draw video frame
-      if (videoRef.current) {
-        ctx.drawImage(videoRef.current, 0, 0, overlay.width, overlay.height)
-      }
-
-      // Draw 3D canvas on top
+      if (videoRef.current) ctx.drawImage(videoRef.current, 0, 0, overlay.width, overlay.height)
       const threeCanvas = document.querySelector('canvas')
-      if (threeCanvas) {
-        ctx.drawImage(threeCanvas, 0, 0, overlay.width, overlay.height)
-      }
-
-      // Download
+      if (threeCanvas) ctx.drawImage(threeCanvas, 0, 0, overlay.width, overlay.height)
       const link = document.createElement('a')
       link.download = 'stockx-ar-tryon.png'
       link.href = overlay.toDataURL('image/png')
       link.click()
-
-      // Flash effect
       setCaptureFlash(true)
       setTimeout(() => setCaptureFlash(false), 200)
     } catch (err) {
       console.error('Screenshot failed:', err)
     }
   }
+
+  // Set active shoe colorway
+  const setColorway = (c) => updateActiveShoe({ colorway: c })
 
   if (error) {
     return (
@@ -263,6 +441,34 @@ export default function ARCamera({ onClose }) {
 
       <video ref={videoRef} className={styles.video} playsInline muted />
 
+      {/* Surface detection scanning overlay */}
+      {cameraReady && surfaceState === 'scanning' && (
+        <div className={styles.scanOverlay}>
+          <div className={styles.scanCard}>
+            <div className={styles.scanSpinner} />
+            <p className={styles.scanText}>Scanning for surface...</p>
+            <p className={styles.scanSubtext}>Point camera at a flat surface</p>
+          </div>
+          {/* Corner brackets */}
+          <div className={`${styles.scanCorner} ${styles.scanTL}`} />
+          <div className={`${styles.scanCorner} ${styles.scanTR}`} />
+          <div className={`${styles.scanCorner} ${styles.scanBL}`} />
+          <div className={`${styles.scanCorner} ${styles.scanBR}`} />
+        </div>
+      )}
+
+      {/* Surface detected flash */}
+      {cameraReady && surfaceState === 'detected' && (
+        <div className={styles.detectedOverlay}>
+          <div className={styles.detectedBadge}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17l-5-5" stroke="#08a05c" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Surface Detected</span>
+          </div>
+        </div>
+      )}
+
       {cameraReady && (
         <div className={styles.canvasOverlay}>
           <Canvas
@@ -275,19 +481,62 @@ export default function ARCamera({ onClose }) {
             <directionalLight position={[5, 5, 5]} intensity={0.6} />
             <pointLight position={[-3, 3, 2]} intensity={0.3} />
             <Suspense fallback={null}>
-              <ARShoe position={shoePos} scale={scale} colorway={colorway} visible={showShoe} />
-              <ContactShadows
-                rotation-x={Math.PI / 2}
-                position={[shoePos[0], shoePos[1] - 0.4, shoePos[2]]}
-                opacity={0.4}
-                width={4}
-                height={4}
-                blur={2.5}
-                far={1}
-              />
+              {/* Surface grid */}
+              <SurfaceGrid position={[0, surfaceY, 0]} detected={surfaceState === 'detected' || surfaceState === 'placed'} />
+              <ScanRing active={surfaceState === 'scanning'} position={[0, surfaceY, 0]} />
+
+              {/* Render all shoes */}
+              {shoes.map((shoe) => (
+                <group key={shoe.id}>
+                  <ARShoe
+                    id={shoe.id}
+                    position={shoe.pos}
+                    scale={shoe.scale}
+                    colorway={shoe.colorway}
+                    visible={shoe.visible}
+                    rotation={shoe.rotation}
+                    spinning={shoe.spinning}
+                    isActive={shoe.id === activeShoeId && shoes.length > 1}
+                    onTap={setActiveShoeId}
+                  />
+                  <ContactShadows
+                    rotation-x={Math.PI / 2}
+                    position={[shoe.pos[0], shoe.pos[1] - 0.4, shoe.pos[2]]}
+                    opacity={shoe.visible ? 0.4 : 0}
+                    width={4}
+                    height={4}
+                    blur={2.5}
+                    far={1}
+                  />
+                </group>
+              ))}
             </Suspense>
-            <DragControls onDrag={handleDrag} onPinch={handlePinch} />
+            <DragControls onDrag={handleDrag} onPinch={handlePinch} onRotate={handleRotate} />
           </Canvas>
+        </div>
+      )}
+
+      {/* First-time hint overlay */}
+      {showHints && surfaceState === 'placed' && (
+        <div className={styles.hintOverlay} onClick={() => setShowHints(false)}>
+          <div className={styles.hintCard}>
+            <div className={styles.hintIcon}>
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <circle cx="18" cy="24" r="6" stroke="#fff" strokeWidth="2" fill="none" />
+                <circle cx="30" cy="24" r="6" stroke="#fff" strokeWidth="2" fill="none" />
+                <path d="M18 18 L18 12 M30 18 L30 12" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+                <path d="M12 24 C12 24 15 20 18 24 C21 28 27 20 30 24 C33 28 36 24 36 24" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <h3 className={styles.hintTitle}>AR Controls</h3>
+            <div className={styles.hintList}>
+              <span>1 finger drag — move shoe</span>
+              <span>Pinch — resize</span>
+              <span>2-finger twist — rotate</span>
+              <span>Compare — add a 2nd shoe</span>
+              <span>Tap anywhere to dismiss</span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -298,31 +547,67 @@ export default function ARCamera({ onClose }) {
         <button onClick={captureScreenshot} className={styles.captureBtn}>Capture</button>
       </div>
 
-      {/* Colorway picker */}
-      <div className={styles.colorBar}>
-        {COLORWAYS.map((c) => (
-          <button
-            key={c.name}
-            className={`${styles.colorBtn} ${colorway.name === c.name ? styles.colorActive : ''}`}
-            onClick={() => setColorway(c)}
-          >
-            {c.name}
-          </button>
-        ))}
-      </div>
+      {/* Colorway picker — applies to active shoe */}
+      {surfaceState === 'placed' && (
+        <div className={styles.colorBar}>
+          {shoes.length > 1 && (
+            <span className={styles.activeLabel}>
+              {activeShoeId === 1 ? 'Left' : 'Right'}
+            </span>
+          )}
+          {COLORWAYS.map((c) => (
+            <button
+              key={c.name}
+              className={`${styles.colorBtn} ${activeShoe.colorway.name === c.name ? styles.colorActive : ''}`}
+              onClick={() => setColorway(c)}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Multi-shoe compare indicator */}
+      {shoes.length > 1 && surfaceState === 'placed' && (
+        <div className={styles.compareBar}>
+          {shoes.map((s) => (
+            <button
+              key={s.id}
+              className={`${styles.compareTab} ${s.id === activeShoeId ? styles.compareActive : ''}`}
+              onClick={() => setActiveShoeId(s.id)}
+            >
+              {s.colorway.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bottom controls */}
-      <div className={styles.hud}>
-        <div className={styles.controlRow}>
-          <button onClick={() => setScale(s => Math.max(0.5, s - 0.3))} className={styles.ctrlBtn}>-</button>
-          <button onClick={toggleFreeze} className={`${styles.ctrlBtn} ${styles.freezeBtn} ${frozen ? styles.frozenActive : ''}`}>
-            {frozen ? 'Unfreeze' : 'Freeze'}
-          </button>
-          <button onClick={() => setShoePos([0, -0.3, 0])} className={styles.ctrlBtn}>Reset</button>
-          <button onClick={() => setScale(s => Math.min(6, s + 0.3))} className={styles.ctrlBtn}>+</button>
+      {surfaceState === 'placed' && (
+        <div className={styles.hud}>
+          <div className={styles.controlRow}>
+            <button onClick={() => updateActiveShoe({ scale: Math.max(0.5, activeShoe.scale - 0.3) })} className={styles.ctrlBtn}>-</button>
+            <button onClick={flipCamera} className={styles.ctrlBtn} title="Flip Camera (F)">Flip</button>
+            <button onClick={toggleFreeze} className={`${styles.ctrlBtn} ${styles.freezeBtn} ${frozen ? styles.frozenActive : ''}`}>
+              {frozen ? 'Unfreeze' : 'Freeze'}
+            </button>
+            <button onClick={toggleSpin} className={`${styles.ctrlBtn} ${activeShoe.spinning ? styles.spinActive : ''}`} title="360 Spin (S)">
+              Spin
+            </button>
+            {shoes.length < 2 ? (
+              <button onClick={addCompareShoe} className={`${styles.ctrlBtn} ${styles.compareBtn}`} title="Compare (C)">Compare</button>
+            ) : (
+              <button onClick={removeCompareShoe} className={`${styles.ctrlBtn} ${styles.removeCmpBtn}`}>Remove</button>
+            )}
+            <button onClick={() => {
+              setShoes([{ id: 1, pos: [0, surfaceY, 0], scale: 2.5, rotation: 0.8, spinning: false, colorway: COLORWAYS[0], visible: true }])
+              setActiveShoeId(1)
+            }} className={styles.ctrlBtn}>Reset</button>
+            <button onClick={() => updateActiveShoe({ scale: Math.min(6, activeShoe.scale + 0.3) })} className={styles.ctrlBtn}>+</button>
+          </div>
+          <p className={styles.hint}>Drag to move | Pinch to resize | Twist to rotate | C=compare | Tab=switch</p>
         </div>
-        <p className={styles.hint}>Drag to move shoe | Pinch to resize | Space to freeze</p>
-      </div>
+      )}
     </div>
   )
 }
