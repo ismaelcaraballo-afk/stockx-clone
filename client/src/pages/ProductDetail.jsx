@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../api.js'
+import Viewer3D from '../components/Viewer3D.jsx'
+import ARCamera from '../components/ARCamera.jsx'
 import styles from './ProductDetail.module.css'
 
 export default function ProductDetail() {
@@ -10,6 +12,8 @@ export default function ProductDetail() {
   const [bidAmount, setBidAmount] = useState('')
   const [askAmount, setAskAmount] = useState('')
   const [message, setMessage] = useState('')
+  const [showAR, setShowAR] = useState(false)
+  const [viewMode, setViewMode] = useState('image')
 
   useEffect(() => {
     api.get(`/api/products/${id}`).then((res) => setProduct(res.data))
@@ -20,11 +24,7 @@ export default function ProductDetail() {
     if (!bidAmount) return
     try {
       const res = await api.post('/api/bids/bid', { product_id: Number(id), amount: Number(bidAmount) })
-      if (res.data.matched) {
-        setMessage('Bid matched! Order created.')
-      } else {
-        setMessage('Bid placed!')
-      }
+      setMessage(res.data.matched ? 'Bid matched! Order created.' : 'Bid placed!')
       setBidAmount('')
       api.get(`/api/bids/product/${id}`).then((r) => setBidData(r.data))
     } catch {
@@ -36,11 +36,7 @@ export default function ProductDetail() {
     if (!askAmount) return
     try {
       const res = await api.post('/api/bids/ask', { product_id: Number(id), amount: Number(askAmount) })
-      if (res.data.matched) {
-        setMessage('Ask matched! Order created.')
-      } else {
-        setMessage('Ask placed!')
-      }
+      setMessage(res.data.matched ? 'Ask matched! Order created.' : 'Ask placed!')
       setAskAmount('')
       api.get(`/api/bids/product/${id}`).then((r) => setBidData(r.data))
     } catch {
@@ -52,20 +48,42 @@ export default function ProductDetail() {
 
   return (
     <div className={styles.page}>
+      {showAR && <ARCamera onClose={() => setShowAR(false)} />}
+
       <div className={styles.left}>
-        <div className={styles.imageWrap}>
-          <img src={product.image_url} alt={product.name} className={styles.image} />
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.toggleBtn} ${viewMode === 'image' ? styles.activeToggle : ''}`}
+            onClick={() => setViewMode('image')}
+          >
+            Photo
+          </button>
+          <button
+            className={`${styles.toggleBtn} ${viewMode === '3d' ? styles.activeToggle : ''}`}
+            onClick={() => setViewMode('3d')}
+          >
+            3D View
+          </button>
+          <button className={styles.arBtn} onClick={() => setShowAR(true)}>
+            AR Try-On
+          </button>
         </div>
-        {/* TODO: 3D Viewer + AR Camera goes here (Ismael) */}
-        <div className={styles.viewer3d}>
-          <p>3D Viewer / AR Camera — Coming Soon</p>
-        </div>
+
+        {viewMode === 'image' ? (
+          <div className={styles.imageWrap}>
+            <img src={product.image_url} alt={product.name} className={styles.image} />
+          </div>
+        ) : (
+          <Viewer3D />
+        )}
       </div>
+
       <div className={styles.right}>
         <p className={styles.brand}>{product.brand}</p>
         <h1 className={styles.name}>{product.name}</h1>
         <p className={styles.size}>Size: {product.size}</p>
         <p className={styles.desc}>{product.description}</p>
+
         <div className={styles.priceRow}>
           <div className={styles.priceBox}>
             <span className={styles.label}>Retail Price</span>
@@ -80,6 +98,7 @@ export default function ProductDetail() {
             <span className={styles.val}>{bidData.lowestAsk ? `$${bidData.lowestAsk.amount}` : '--'}</span>
           </div>
         </div>
+
         <div className={styles.actions}>
           <div className={styles.actionGroup}>
             <input

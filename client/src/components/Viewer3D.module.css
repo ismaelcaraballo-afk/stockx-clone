@@ -1,0 +1,55 @@
+.container {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
+  border: 1px solid #333;
+}
+.canvasWrap {
+  height: 350px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  cursor: grab;
+}
+.canvasWrap:active {
+  cursor: grabbing;
+}
+.controls {
+  padding: 12px;
+  border-top: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #888;
+  min-width: 60px;
+}
+.btnGroup {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 5px 12px;
+  background: #0e0e0e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+.btn:hover {
+  border-color: #08a05c;
+  color: #fff;
+}
+.active {
+  background: #08a05c;
+  border-color: #08a05c;
+  color: #fff;
+}
