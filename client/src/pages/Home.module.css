@@ -1,43 +1,12 @@
-.page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-.header h1 {
-  font-size: 28px;
-}
-.filters {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-.filterBtn {
-  padding: 8px 16px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 20px;
-  color: #ccc;
-  font-size: 13px;
-}
-.filterBtn:hover, .active {
-  background: #08a05c;
-  border-color: #08a05c;
-  color: #fff;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
-}
-.empty {
-  text-align: center;
-  color: #888;
-  margin-top: 60px;
-  font-size: 16px;
-}
+.page { max-width: 1200px; margin: 0 auto; padding: 32px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.header h1 { font-size: 28px; }
+.filterRow { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filterBtn { padding: 8px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 20px; color: #ccc; font-size: 13px; }
+.filterBtn:hover, .active { background: #08a05c; border-color: #08a05c; color: #fff; }
+.sortSelect { padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #ccc; font-size: 13px; appearance: auto; }
+.sortSelect:focus { outline: none; border-color: #08a05c; }
+.count { color: #666; font-size: 13px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+.empty { text-align: center; color: #888; margin-top: 60px; font-size: 16px; }

@@ -5,6 +5,8 @@ import Viewer3D from '../components/Viewer3D.jsx'
 import ARCamera from '../components/ARCamera.jsx'
 import styles from './ProductDetail.module.css'
 
+const PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" fill="#333"><rect width="300" height="300" fill="#1a1a1a"/><text x="150" y="150" text-anchor="middle" dy=".3em" font-size="16" fill="#555" font-family="sans-serif">No Image</text></svg>')
+
 export default function ProductDetail() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
@@ -20,13 +22,17 @@ export default function ProductDetail() {
     api.get(`/api/bids/product/${id}`).then((res) => setBidData(res.data))
   }, [id])
 
+  const refreshBids = () => {
+    api.get(`/api/bids/product/${id}`).then((r) => setBidData(r.data))
+  }
+
   const placeBid = async () => {
     if (!bidAmount) return
     try {
       const res = await api.post('/api/bids/bid', { product_id: Number(id), amount: Number(bidAmount) })
       setMessage(res.data.matched ? 'Bid matched! Order created.' : 'Bid placed!')
       setBidAmount('')
-      api.get(`/api/bids/product/${id}`).then((r) => setBidData(r.data))
+      refreshBids()
     } catch {
       setMessage('Failed to place bid. Are you logged in?')
     }
@@ -38,9 +44,31 @@ export default function ProductDetail() {
       const res = await api.post('/api/bids/ask', { product_id: Number(id), amount: Number(askAmount) })
       setMessage(res.data.matched ? 'Ask matched! Order created.' : 'Ask placed!')
       setAskAmount('')
-      api.get(`/api/bids/product/${id}`).then((r) => setBidData(r.data))
+      refreshBids()
     } catch {
       setMessage('Failed to place ask. Are you logged in?')
+    }
+  }
+
+  const buyNow = async () => {
+    if (!bidData.lowestAsk) return
+    try {
+      const res = await api.post('/api/bids/bid', { product_id: Number(id), amount: Number(bidData.lowestAsk.amount) })
+      setMessage(res.data.matched ? 'Purchase complete!' : 'Bid placed at lowest ask.')
+      refreshBids()
+    } catch {
+      setMessage('Failed to buy. Are you logged in?')
+    }
+  }
+
+  const sellNow = async () => {
+    if (!bidData.highestBid) return
+    try {
+      const res = await api.post('/api/bids/ask', { product_id: Number(id), amount: Number(bidData.highestBid.amount) })
+      setMessage(res.data.matched ? 'Sold! Order created.' : 'Ask placed at highest bid.')
+      refreshBids()
+    } catch {
+      setMessage('Failed to sell. Are you logged in?')
     }
   }
 
@@ -71,7 +99,12 @@ export default function ProductDetail() {
 
         {viewMode === 'image' ? (
           <div className={styles.imageWrap}>
-            <img src={product.image_url} alt={product.name} className={styles.image} />
+            <img
+              src={product.image_url || PLACEHOLDER}
+              alt={product.name}
+              className={styles.image}
+              onError={(e) => { e.target.src = PLACEHOLDER }}
+            />
           </div>
         ) : (
           <Viewer3D />
@@ -98,6 +131,25 @@ export default function ProductDetail() {
             <span className={styles.val}>{bidData.lowestAsk ? `$${bidData.lowestAsk.amount}` : '--'}</span>
           </div>
         </div>
+
+        <div className={styles.instantRow}>
+          <button
+            onClick={buyNow}
+            className={styles.buyNowBtn}
+            disabled={!bidData.lowestAsk}
+          >
+            {bidData.lowestAsk ? `Buy Now — $${bidData.lowestAsk.amount}` : 'No Asks Yet'}
+          </button>
+          <button
+            onClick={sellNow}
+            className={styles.sellNowBtn}
+            disabled={!bidData.highestBid}
+          >
+            {bidData.highestBid ? `Sell Now — $${bidData.highestBid.amount}` : 'No Bids Yet'}
+          </button>
+        </div>
+
+        <div className={styles.orDivider}><span>or place your own price</span></div>
 
         <div className={styles.actions}>
           <div className={styles.actionGroup}>

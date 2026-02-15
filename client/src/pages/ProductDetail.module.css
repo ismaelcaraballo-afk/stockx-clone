@@ -13,10 +13,22 @@
 .name { font-size: 24px; font-weight: 700; margin: 8px 0; }
 .size { font-size: 14px; color: #aaa; margin-bottom: 12px; }
 .desc { font-size: 14px; color: #ccc; line-height: 1.5; margin-bottom: 24px; }
-.priceRow { display: flex; gap: 16px; margin-bottom: 24px; }
+.priceRow { display: flex; gap: 16px; margin-bottom: 20px; }
 .priceBox { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; text-align: center; }
 .label { display: block; font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
 .val { font-size: 20px; font-weight: 700; color: #08a05c; }
+.instantRow { display: flex; gap: 12px; margin-bottom: 16px; }
+.buyNowBtn { flex: 1; padding: 14px; background: #08a05c; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; }
+.buyNowBtn:hover:not(:disabled) { background: #069b53; }
+.buyNowBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sellNowBtn { flex: 1; padding: 14px; background: #d63031; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; }
+.sellNowBtn:hover:not(:disabled) { background: #c0392b; }
+.sellNowBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.orDivider { text-align: center; margin-bottom: 16px; color: #555; font-size: 12px; position: relative; }
+.orDivider::before, .orDivider::after { content: ''; position: absolute; top: 50%; width: 35%; height: 1px; background: #333; }
+.orDivider::before { left: 0; }
+.orDivider::after { right: 0; }
+.orDivider span { padding: 0 12px; background: #0e0e0e; position: relative; }
 .actions { display: flex; flex-direction: column; gap: 12px; }
 .actionGroup { display: flex; gap: 8px; }
 .input { flex: 1; padding: 10px; border: 1px solid #333; border-radius: 4px; background: #1a1a1a; color: #fff; font-size: 14px; }
