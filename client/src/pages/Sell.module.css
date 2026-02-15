@@ -1,0 +1,37 @@
+.page { display: flex; justify-content: center; padding: 32px; }
+.card { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 32px; width: 100%; max-width: 600px; }
+.card h1 { font-size: 24px; margin-bottom: 4px; }
+.subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+.loginMsg { color: #888; margin: 24px 0; font-size: 14px; text-align: center; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.row { display: flex; gap: 16px; }
+.row .field { flex: 1; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.label { font-size: 12px; color: #888; text-transform: uppercase; }
+.input, .select, .textarea {
+  padding: 10px 12px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #0e0e0e;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: #08a05c; }
+.textarea { resize: vertical; }
+.select { appearance: auto; }
+.preview { background: #f5f5f5; border-radius: 8px; padding: 20px; text-align: center; }
+.previewImg { max-width: 100%; max-height: 200px; object-fit: contain; }
+.error { color: #d63031; font-size: 13px; }
+.submitBtn {
+  padding: 14px;
+  background: #08a05c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+.submitBtn:hover { background: #069b53; }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }

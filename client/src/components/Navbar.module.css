@@ -24,7 +24,24 @@
 .links a:hover {
   color: #fff;
 }
+.sellLink {
+  color: #08a05c !important;
+  font-weight: 600;
+}
 .user {
   color: #08a05c;
   font-size: 14px;
+}
+.logoutBtn {
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+}
+.logoutBtn:hover {
+  border-color: #d63031;
+  color: #d63031;
 }
