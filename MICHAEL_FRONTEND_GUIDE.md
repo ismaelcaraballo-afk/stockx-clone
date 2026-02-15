@@ -67,7 +67,7 @@ psql -d stockx_clone_test -f schema.sql
 npm test
 ```
 
-You should see: **52 tests passing, 4 suites** (auth, products, bids, orders).
+You should see: **58 tests passing, 4 suites** (auth, products, bids, orders).
 
 ---
 
@@ -317,3 +317,58 @@ if (loading) return <DetailSkeleton />
 ## Questions?
 
 Ask Ismael. He built the backend, he knows how everything connects. Don't spend more than 15 minutes stuck on something — just ask.
+
+---
+
+## AI Prompt for Michael
+
+If you're using Claude, Copilot, ChatGPT, or any AI assistant, paste this prompt at the start of your session to give it full context:
+
+```
+I'm Michael, working on the frontend of a StockX clone for a class project (1-week sprint, due Saturday). My partner Ismael built the backend (Express 5, PostgreSQL, JWT auth) and the 3D/AR features. I'm handling frontend styling and polish.
+
+Tech stack:
+- React 19 + Vite
+- React Router for navigation
+- Axios for API calls (client/src/api.js handles JWT automatically)
+- CSS Modules for styling (each component has its own .module.css)
+- React Three Fiber + drei for 3D (already built, don't touch)
+- Dark theme (#0e0e0e background, #1a1a1a cards, #08a05c green accent, #d63031 red accent)
+
+Project structure:
+- client/src/pages/ — Home.jsx, ProductDetail.jsx, Dashboard.jsx, Login.jsx, Sell.jsx
+- client/src/components/ — Navbar, ProductCard, SearchBar, Skeleton, ProtectedRoute, Viewer3D, ARCamera
+- server/ — Express API at /api (proxied by Vite, runs on port 3001)
+
+What's already built and working (don't rebuild):
+- 3D shoe viewer with 5 colorways and preset angles
+- AR camera with surface detection, multi-shoe compare, gestures
+- Loading skeletons (CardGridSkeleton, DetailSkeleton)
+- Brand filter buttons + sort dropdown on browse page
+- Buy Now / Sell Now instant buttons
+- Cancel bid / Delete listing on dashboard
+- Price warnings when bidding 50%+ above or below retail
+- Token expiry handling (auto-redirect to login)
+- Self-bid prevention and duplicate bid blocking on backend
+- Empty search results with "Clear Filters" button
+- Login prompt shown when not authenticated on product page
+- 58 backend tests passing across 4 suites
+
+My tasks:
+1. Make ProductCard hover animations polished (scale, shadow, glow)
+2. Make all pages responsive (mobile-friendly)
+3. Style the Dashboard tabs nicely
+4. Style the Login page (centered, clean)
+5. Style the Sell page form
+6. Add success/error toast feedback on bid/ask actions
+7. Add empty state messages on Dashboard ("No bids yet", "No orders yet")
+8. Make it look as close to stockx.com as possible
+9. Test the full flow on mobile
+
+I work on branch michael/frontend and Ismael merges to main.
+Don't push to main directly.
+The backend runs on port 3001, frontend on 3000.
+Vite proxies /api to the backend.
+```
+
+Copy and paste this into your AI tool at the start of each session. It will know exactly what to help you with.

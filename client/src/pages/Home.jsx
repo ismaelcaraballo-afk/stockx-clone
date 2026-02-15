@@ -26,6 +26,12 @@ export default function Home() {
 
   const brands = ['All', 'Nike', 'Adidas', 'New Balance', 'Converse', 'Vans', 'Puma', 'ASICS']
 
+  const clearFilters = () => {
+    setSearch('')
+    setBrand('')
+    setSort('')
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -64,7 +70,16 @@ export default function Home() {
           ))
         )}
       </div>
-      {!loading && products.length === 0 && <p className={styles.empty}>No sneakers found.</p>}
+      {!loading && products.length === 0 && (
+        <div className={styles.emptyState}>
+          <p className={styles.emptyTitle}>No sneakers found</p>
+          {search && <p className={styles.emptyDetail}>No results for "{search}"{brand ? ` in ${brand}` : ''}</p>}
+          {!search && brand && <p className={styles.emptyDetail}>No {brand} sneakers available right now</p>}
+          {(search || brand) && (
+            <button onClick={clearFilters} className={styles.clearBtn}>Clear Filters</button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

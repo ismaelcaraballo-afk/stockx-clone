@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import styles from './Login.module.css'
 
@@ -9,6 +9,8 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const expired = searchParams.get('expired')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,6 +30,7 @@ export default function Login() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        {expired && <p className={styles.expired}>Your session expired. Please log in again.</p>}
         <h1>{isSignup ? 'Sign Up' : 'Log In'}</h1>
         <form onSubmit={handleSubmit} className={styles.form}>
           <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required className={styles.input} />

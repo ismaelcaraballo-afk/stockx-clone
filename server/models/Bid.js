@@ -26,6 +26,14 @@ const Bid = {
     return result.rows[0] || null;
   },
 
+  async findDuplicate(productId, userId, amount, type) {
+    const result = await pool.query(
+      "SELECT * FROM bids WHERE product_id = $1 AND user_id = $2 AND amount = $3 AND type = $4 AND status = 'active' LIMIT 1",
+      [productId, userId, amount, type]
+    );
+    return result.rows[0] || null;
+  },
+
   async cancel(id) {
     const result = await pool.query(
       "UPDATE bids SET status = 'cancelled' WHERE id = $1 AND status = 'active' RETURNING *",

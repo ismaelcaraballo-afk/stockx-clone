@@ -2,6 +2,7 @@ const express = require("express");
 const auth = require("../middleware/auth");
 const Bid = require("../models/Bid");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
 
 const router = express.Router();
 
@@ -45,6 +46,21 @@ router.post("/bid", auth, async (req, res) => {
       return res.status(400).json({ error: "Amount must be between $1 and $1,000,000" });
     }
 
+    // Prevent bidding on own product
+    const product = await Product.findById(product_id);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+    if (product.seller_id === req.user.id) {
+      return res.status(400).json({ error: "You cannot bid on your own listing" });
+    }
+
+    // Prevent duplicate active bid (same user, product, amount, type)
+    const existing = await Bid.findDuplicate(product_id, req.user.id, numAmount, "bid");
+    if (existing) {
+      return res.status(409).json({ error: "You already have an active bid at this price" });
+    }
+
     const bid = await Bid.createBid({ product_id, user_id: req.user.id, amount: numAmount });
 
     const lowestAsk = await Bid.getLowestAsk(product_id);
@@ -79,6 +95,18 @@ router.post("/ask", auth, async (req, res) => {
     const numAmount = Number(amount);
     if (isNaN(numAmount) || numAmount <= 0 || numAmount > 1000000) {
       return res.status(400).json({ error: "Amount must be between $1 and $1,000,000" });
+    }
+
+    // Prevent asking on own product (seller can't bid AND ask on their own listing)
+    const product = await Product.findById(product_id);
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Prevent duplicate active ask
+    const existing = await Bid.findDuplicate(product_id, req.user.id, numAmount, "ask");
+    if (existing) {
+      return res.status(409).json({ error: "You already have an active ask at this price" });
     }
 
     const ask = await Bid.createAsk({ product_id, user_id: req.user.id, amount: numAmount });

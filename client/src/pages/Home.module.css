@@ -10,3 +10,8 @@
 .count { color: #666; font-size: 13px; margin-bottom: 16px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
 .empty { text-align: center; color: #888; margin-top: 60px; font-size: 16px; }
+.emptyState { text-align: center; margin-top: 48px; padding: 40px; }
+.emptyTitle { font-size: 20px; color: #888; margin-bottom: 8px; }
+.emptyDetail { font-size: 14px; color: #555; margin-bottom: 16px; }
+.clearBtn { padding: 10px 24px; background: none; border: 1px solid #08a05c; border-radius: 20px; color: #08a05c; font-size: 13px; font-weight: 600; cursor: pointer; }
+.clearBtn:hover { background: #08a05c; color: #fff; }

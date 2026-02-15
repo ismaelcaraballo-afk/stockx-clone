@@ -57,13 +57,11 @@ describe("POST /api/bids/bid", () => {
   });
 
   it("should auto-match bid with existing ask", async () => {
-    // Seller places ask at $150
     await request(app)
       .post("/api/bids/ask")
       .set("Authorization", `Bearer ${seller.token}`)
       .send({ product_id: product.id, amount: 150 });
 
-    // Buyer bids $150 (meets ask)
     const res = await request(app)
       .post("/api/bids/bid")
       .set("Authorization", `Bearer ${buyer.token}`)
@@ -76,13 +74,11 @@ describe("POST /api/bids/bid", () => {
   });
 
   it("should auto-match bid when bid exceeds ask", async () => {
-    // Ask at $120
     await request(app)
       .post("/api/bids/ask")
       .set("Authorization", `Bearer ${seller.token}`)
       .send({ product_id: product.id, amount: 120 });
 
-    // Bid at $140 (exceeds lowest ask)
     const res = await request(app)
       .post("/api/bids/bid")
       .set("Authorization", `Bearer ${buyer.token}`)
@@ -90,17 +86,15 @@ describe("POST /api/bids/bid", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.matched).toBe(true);
-    expect(Number(res.body.order.price)).toBe(120); // matched at ask price
+    expect(Number(res.body.order.price)).toBe(120);
   });
 
   it("should NOT match when bid is below ask", async () => {
-    // Ask at $200
     await request(app)
       .post("/api/bids/ask")
       .set("Authorization", `Bearer ${seller.token}`)
       .send({ product_id: product.id, amount: 200 });
 
-    // Bid at $150 (below ask)
     const res = await request(app)
       .post("/api/bids/bid")
       .set("Authorization", `Bearer ${buyer.token}`)
@@ -108,6 +102,72 @@ describe("POST /api/bids/bid", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.matched).toBe(false);
+  });
+
+  it("should reject bidding on own product", async () => {
+    const res = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${seller.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/own listing/i);
+  });
+
+  it("should reject duplicate active bid (same user, product, amount)", async () => {
+    await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    const res = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/already have/i);
+  });
+
+  it("should allow same user to bid different amount", async () => {
+    await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    const res = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 150 });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("should allow same amount after cancelling previous bid", async () => {
+    const first = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    await request(app)
+      .delete(`/api/bids/${first.body.bid.id}`)
+      .set("Authorization", `Bearer ${buyer.token}`);
+
+    const res = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: product.id, amount: 140 });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("should return 404 for nonexistent product", async () => {
+    const res = await request(app)
+      .post("/api/bids/bid")
+      .set("Authorization", `Bearer ${buyer.token}`)
+      .send({ product_id: 99999, amount: 140 });
+
+    expect(res.status).toBe(404);
   });
 });
 
@@ -124,13 +184,11 @@ describe("POST /api/bids/ask", () => {
   });
 
   it("should auto-match ask with existing bid", async () => {
-    // Buyer bids $160
     await request(app)
       .post("/api/bids/bid")
       .set("Authorization", `Bearer ${buyer.token}`)
       .send({ product_id: product.id, amount: 160 });
 
-    // Seller asks $150 (below highest bid)
     const res = await request(app)
       .post("/api/bids/ask")
       .set("Authorization", `Bearer ${seller.token}`)
@@ -138,7 +196,22 @@ describe("POST /api/bids/ask", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.matched).toBe(true);
-    expect(Number(res.body.order.price)).toBe(150); // matched at ask price
+    expect(Number(res.body.order.price)).toBe(150);
+  });
+
+  it("should reject duplicate active ask", async () => {
+    await request(app)
+      .post("/api/bids/ask")
+      .set("Authorization", `Bearer ${seller.token}`)
+      .send({ product_id: product.id, amount: 200 });
+
+    const res = await request(app)
+      .post("/api/bids/ask")
+      .set("Authorization", `Bearer ${seller.token}`)
+      .send({ product_id: product.id, amount: 200 });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/already have/i);
   });
 });
 
@@ -222,7 +295,6 @@ describe("DELETE /api/bids/:id", () => {
   });
 
   it("should reject cancelling matched bid", async () => {
-    // Create a matched order
     await request(app)
       .post("/api/bids/ask")
       .set("Authorization", `Bearer ${seller.token}`)
@@ -233,7 +305,6 @@ describe("DELETE /api/bids/:id", () => {
       .set("Authorization", `Bearer ${buyer.token}`)
       .send({ product_id: product.id, amount: 150 });
 
-    // Bid is now matched, try to cancel
     const bidId = bidRes.body.bid.id;
     const res = await request(app)
       .delete(`/api/bids/${bidId}`)

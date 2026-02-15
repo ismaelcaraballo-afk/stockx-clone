@@ -8,6 +8,17 @@ import styles from './ProductDetail.module.css'
 
 const PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" fill="#333"><rect width="300" height="300" fill="#1a1a1a"/><text x="150" y="150" text-anchor="middle" dy=".3em" font-size="16" fill="#555" font-family="sans-serif">No Image</text></svg>')
 
+function getPriceWarning(amount, retailPrice) {
+  if (!amount || !retailPrice) return null
+  const num = Number(amount)
+  const retail = Number(retailPrice)
+  if (isNaN(num) || num <= 0) return null
+  const pct = ((num - retail) / retail) * 100
+  if (pct > 50) return `${Math.round(pct)}% above retail — are you sure?`
+  if (pct < -50) return `${Math.round(Math.abs(pct))}% below retail`
+  return null
+}
+
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -17,6 +28,7 @@ export default function ProductDetail() {
   const [bidAmount, setBidAmount] = useState('')
   const [askAmount, setAskAmount] = useState('')
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState('success')
   const [showAR, setShowAR] = useState(false)
   const [viewMode, setViewMode] = useState('image')
   const user = JSON.parse(localStorage.getItem('user') || 'null')
@@ -32,15 +44,21 @@ export default function ProductDetail() {
     api.get(`/api/products/${id}/history`).then((r) => setHistory(r.data))
   }
 
+  const showMsg = (text, type = 'success') => {
+    setMessage(text)
+    setMessageType(type)
+    setTimeout(() => setMessage(''), 5000)
+  }
+
   const placeBid = async () => {
     if (!bidAmount) return
     try {
       const res = await api.post('/api/bids/bid', { product_id: Number(id), amount: Number(bidAmount) })
-      setMessage(res.data.matched ? 'Bid matched! Order created.' : 'Bid placed!')
+      showMsg(res.data.matched ? 'Bid matched! Order created.' : 'Bid placed!')
       setBidAmount('')
       refreshData()
-    } catch {
-      setMessage('Failed to place bid. Are you logged in?')
+    } catch (err) {
+      showMsg(err.response?.data?.error || 'Failed to place bid', 'error')
     }
   }
 
@@ -48,11 +66,11 @@ export default function ProductDetail() {
     if (!askAmount) return
     try {
       const res = await api.post('/api/bids/ask', { product_id: Number(id), amount: Number(askAmount) })
-      setMessage(res.data.matched ? 'Ask matched! Order created.' : 'Ask placed!')
+      showMsg(res.data.matched ? 'Ask matched! Order created.' : 'Ask placed!')
       setAskAmount('')
       refreshData()
-    } catch {
-      setMessage('Failed to place ask. Are you logged in?')
+    } catch (err) {
+      showMsg(err.response?.data?.error || 'Failed to place ask', 'error')
     }
   }
 
@@ -60,10 +78,10 @@ export default function ProductDetail() {
     if (!bidData.lowestAsk) return
     try {
       const res = await api.post('/api/bids/bid', { product_id: Number(id), amount: Number(bidData.lowestAsk.amount) })
-      setMessage(res.data.matched ? 'Purchase complete!' : 'Bid placed at lowest ask.')
+      showMsg(res.data.matched ? 'Purchase complete!' : 'Bid placed at lowest ask.')
       refreshData()
-    } catch {
-      setMessage('Failed to buy. Are you logged in?')
+    } catch (err) {
+      showMsg(err.response?.data?.error || 'Failed to buy', 'error')
     }
   }
 
@@ -71,10 +89,10 @@ export default function ProductDetail() {
     if (!bidData.highestBid) return
     try {
       const res = await api.post('/api/bids/ask', { product_id: Number(id), amount: Number(bidData.highestBid.amount) })
-      setMessage(res.data.matched ? 'Sold! Order created.' : 'Ask placed at highest bid.')
+      showMsg(res.data.matched ? 'Sold! Order created.' : 'Ask placed at highest bid.')
       refreshData()
-    } catch {
-      setMessage('Failed to sell. Are you logged in?')
+    } catch (err) {
+      showMsg(err.response?.data?.error || 'Failed to sell', 'error')
     }
   }
 
@@ -84,13 +102,15 @@ export default function ProductDetail() {
       await api.delete(`/api/products/${id}`)
       navigate('/')
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Failed to delete')
+      showMsg(err.response?.data?.error || 'Failed to delete', 'error')
     }
   }
 
   if (!product) return <DetailSkeleton />
 
   const isOwner = user && user.id === product.seller_id
+  const bidWarning = getPriceWarning(bidAmount, product.retail_price)
+  const askWarning = getPriceWarning(askAmount, product.retail_price)
 
   return (
     <div className={styles.page}>
@@ -168,11 +188,15 @@ export default function ProductDetail() {
           </div>
         )}
 
+        {!user && (
+          <p className={styles.loginPrompt}>Log in to place bids or asks</p>
+        )}
+
         <div className={styles.instantRow}>
-          <button onClick={buyNow} className={styles.buyNowBtn} disabled={!bidData.lowestAsk}>
+          <button onClick={buyNow} className={styles.buyNowBtn} disabled={!bidData.lowestAsk || !user || isOwner}>
             {bidData.lowestAsk ? `Buy Now — $${bidData.lowestAsk.amount}` : 'No Asks Yet'}
           </button>
-          <button onClick={sellNow} className={styles.sellNowBtn} disabled={!bidData.highestBid}>
+          <button onClick={sellNow} className={styles.sellNowBtn} disabled={!bidData.highestBid || !user}>
             {bidData.highestBid ? `Sell Now — $${bidData.highestBid.amount}` : 'No Bids Yet'}
           </button>
         </div>
@@ -182,14 +206,16 @@ export default function ProductDetail() {
         <div className={styles.actions}>
           <div className={styles.actionGroup}>
             <input type="number" placeholder="Your bid $" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className={styles.input} />
-            <button onClick={placeBid} className={styles.bidBtn}>Place Bid</button>
+            <button onClick={placeBid} className={styles.bidBtn} disabled={!user || isOwner}>Place Bid</button>
           </div>
+          {bidWarning && <p className={styles.priceWarning}>{bidWarning}</p>}
           <div className={styles.actionGroup}>
             <input type="number" placeholder="Your ask $" value={askAmount} onChange={(e) => setAskAmount(e.target.value)} className={styles.input} />
-            <button onClick={placeAsk} className={styles.askBtn}>Place Ask</button>
+            <button onClick={placeAsk} className={styles.askBtn} disabled={!user}>Place Ask</button>
           </div>
+          {askWarning && <p className={styles.priceWarning}>{askWarning}</p>}
         </div>
-        {message && <p className={styles.message}>{message}</p>}
+        {message && <p className={messageType === 'error' ? styles.messageError : styles.message}>{message}</p>}
 
         {history.history.length > 0 && (
           <div className={styles.historySection}>

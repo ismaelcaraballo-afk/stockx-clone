@@ -47,3 +47,6 @@
 .historySection h3 { font-size: 16px; margin-bottom: 12px; color: #ccc; }
 .historyRow { display: flex; justify-content: space-between; padding: 8px 12px; background: #1a1a1a; border-radius: 4px; margin-bottom: 4px; font-size: 14px; }
 .historyDate { color: #888; font-size: 12px; }
+.priceWarning { color: #e67e22; font-size: 12px; margin-top: -6px; padding-left: 4px; }
+.messageError { margin-top: 16px; color: #d63031; font-size: 14px; }
+.loginPrompt { color: #e67e22; font-size: 13px; margin-bottom: 12px; padding: 8px 12px; background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.2); border-radius: 6px; text-align: center; }
