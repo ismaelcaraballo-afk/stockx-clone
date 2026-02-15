@@ -58,11 +58,9 @@ const Product = {
   },
 
   async delete(id) {
-    // Cancel all active bids/asks first
-    await pool.query(
-      "UPDATE bids SET status = 'cancelled' WHERE product_id = $1 AND status = 'active'",
-      [id]
-    );
+    // Delete in correct order: orders -> bids -> product
+    await pool.query("DELETE FROM orders WHERE product_id = $1", [id]);
+    await pool.query("DELETE FROM bids WHERE product_id = $1", [id]);
     const result = await pool.query(
       "DELETE FROM products WHERE id = $1 RETURNING *",
       [id]
