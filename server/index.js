@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
@@ -12,7 +13,30 @@ const app = express();
 
 // Middleware
 app.use(cors({ origin: "*" }));
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+
+// Rate limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  message: { error: "Too many requests, slow down" },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many auth attempts, try again later" },
+});
+
+const bidLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: "Too many bids, slow down" },
+});
+
+app.use("/api", globalLimiter);
+app.use("/api/auth", authLimiter);
+app.use("/api/bids", bidLimiter);
 
 // REST API routes
 app.use("/api/auth", authRoutes);

@@ -56,6 +56,19 @@ const Product = {
     );
     return result.rows;
   },
+
+  async delete(id) {
+    // Cancel all active bids/asks first
+    await pool.query(
+      "UPDATE bids SET status = 'cancelled' WHERE product_id = $1 AND status = 'active'",
+      [id]
+    );
+    const result = await pool.query(
+      "DELETE FROM products WHERE id = $1 RETURNING *",
+      [id]
+    );
+    return result.rows[0] || null;
+  },
 };
 
 module.exports = Product;

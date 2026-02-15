@@ -5,12 +5,16 @@ const Order = require("../models/Order");
 
 const router = express.Router();
 
-// GET /api/bids/product/:productId — get bids/asks for a product
+// GET /api/bids/product/:productId
 router.get("/product/:productId", async (req, res) => {
   try {
-    const bids = await Bid.getByProduct(req.params.productId);
-    const highest = await Bid.getHighestBid(req.params.productId);
-    const lowest = await Bid.getLowestAsk(req.params.productId);
+    const productId = Number(req.params.productId);
+    if (!Number.isInteger(productId) || productId < 1) {
+      return res.status(400).json({ error: "Invalid product ID" });
+    }
+    const bids = await Bid.getByProduct(productId);
+    const highest = await Bid.getHighestBid(productId);
+    const lowest = await Bid.getLowestAsk(productId);
     res.json({ bids, highestBid: highest, lowestAsk: lowest });
   } catch (err) {
     console.error("Get bids error:", err);
@@ -18,7 +22,7 @@ router.get("/product/:productId", async (req, res) => {
   }
 });
 
-// GET /api/bids/mine — get current user's bids
+// GET /api/bids/mine
 router.get("/mine", auth, async (req, res) => {
   try {
     const bids = await Bid.getByUser(req.user.id);
@@ -36,12 +40,15 @@ router.post("/bid", auth, async (req, res) => {
     if (!product_id || !amount) {
       return res.status(400).json({ error: "Product ID and amount required" });
     }
-    const bid = await Bid.createBid({ product_id, user_id: req.user.id, amount });
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0 || numAmount > 1000000) {
+      return res.status(400).json({ error: "Amount must be between $1 and $1,000,000" });
+    }
 
-    // Check if there's a matching ask (lowest ask <= bid amount)
+    const bid = await Bid.createBid({ product_id, user_id: req.user.id, amount: numAmount });
+
     const lowestAsk = await Bid.getLowestAsk(product_id);
-    if (lowestAsk && lowestAsk.amount <= amount) {
-      // Match! Create an order
+    if (lowestAsk && Number(lowestAsk.amount) <= numAmount) {
       await Bid.markMatched(bid.id);
       await Bid.markMatched(lowestAsk.id);
       const order = await Order.create({
@@ -69,19 +76,22 @@ router.post("/ask", auth, async (req, res) => {
     if (!product_id || !amount) {
       return res.status(400).json({ error: "Product ID and amount required" });
     }
-    const ask = await Bid.createAsk({ product_id, user_id: req.user.id, amount });
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount <= 0 || numAmount > 1000000) {
+      return res.status(400).json({ error: "Amount must be between $1 and $1,000,000" });
+    }
 
-    // Check if there's a matching bid (highest bid >= ask amount)
+    const ask = await Bid.createAsk({ product_id, user_id: req.user.id, amount: numAmount });
+
     const highestBid = await Bid.getHighestBid(product_id);
-    if (highestBid && highestBid.amount >= amount) {
-      // Match! Create an order
+    if (highestBid && Number(highestBid.amount) >= numAmount) {
       await Bid.markMatched(ask.id);
       await Bid.markMatched(highestBid.id);
       const order = await Order.create({
         product_id,
         buyer_id: highestBid.user_id,
         seller_id: req.user.id,
-        price: amount,
+        price: numAmount,
         bid_id: highestBid.id,
         ask_id: ask.id,
       });
@@ -91,6 +101,33 @@ router.post("/ask", auth, async (req, res) => {
     res.status(201).json({ ask, matched: false });
   } catch (err) {
     console.error("Place ask error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// DELETE /api/bids/:id — cancel a bid/ask (owner only)
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const bidId = Number(req.params.id);
+    if (!Number.isInteger(bidId) || bidId < 1) {
+      return res.status(400).json({ error: "Invalid bid ID" });
+    }
+
+    const bid = await Bid.findById(bidId);
+    if (!bid) {
+      return res.status(404).json({ error: "Bid not found" });
+    }
+    if (bid.user_id !== req.user.id) {
+      return res.status(403).json({ error: "You can only cancel your own bids" });
+    }
+    if (bid.status !== "active") {
+      return res.status(400).json({ error: "Only active bids can be cancelled" });
+    }
+
+    const cancelled = await Bid.cancel(bidId);
+    res.json({ message: "Bid cancelled", bid: cancelled });
+  } catch (err) {
+    console.error("Cancel bid error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

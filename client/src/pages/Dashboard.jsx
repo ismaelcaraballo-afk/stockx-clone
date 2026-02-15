@@ -11,12 +11,37 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || 'null')
 
-  useEffect(() => {
-    if (!user) { navigate('/login'); return }
+  const loadData = () => {
     api.get('/api/users/me/listings').then((res) => setListings(res.data))
     api.get('/api/bids/mine').then((res) => setBids(res.data))
     api.get('/api/orders').then((res) => setOrders(res.data))
+  }
+
+  useEffect(() => {
+    if (!user) { navigate('/login'); return }
+    loadData()
   }, [])
+
+  const cancelBid = async (bidId, e) => {
+    e.stopPropagation()
+    try {
+      await api.delete(`/api/bids/${bidId}`)
+      loadData()
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to cancel')
+    }
+  }
+
+  const deleteListing = async (productId, e) => {
+    e.stopPropagation()
+    if (!confirm('Delete this listing? All active bids/asks will be cancelled.')) return
+    try {
+      await api.delete(`/api/products/${productId}`)
+      loadData()
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete')
+    }
+  }
 
   if (!user) return null
 
@@ -31,10 +56,12 @@ export default function Dashboard() {
       </div>
       <div className={styles.content}>
         {tab === 'listings' && (
-          listings.length === 0 ? <p className={styles.empty}>No listings yet.</p> :
+          listings.length === 0 ? <p className={styles.empty}>No listings yet. <span className={styles.link} onClick={() => navigate('/sell')}>Create one</span></p> :
           listings.map((p) => (
-            <div key={p.id} className={styles.row} onClick={() => navigate(`/product/${p.id}`)}>
-              <span>{p.name}</span><span>${p.retail_price}</span>
+            <div key={p.id} className={styles.row}>
+              <span className={styles.clickable} onClick={() => navigate(`/product/${p.id}`)}>{p.name}</span>
+              <span>${p.retail_price}</span>
+              <button onClick={(e) => deleteListing(p.id, e)} className={styles.cancelBtn}>Delete</button>
             </div>
           ))
         )}
@@ -42,7 +69,12 @@ export default function Dashboard() {
           bids.length === 0 ? <p className={styles.empty}>No bids yet.</p> :
           bids.map((b) => (
             <div key={b.id} className={styles.row}>
-              <span>{b.product_name}</span><span className={b.type === 'bid' ? styles.green : styles.red}>{b.type.toUpperCase()} ${b.amount}</span><span className={styles.status}>{b.status}</span>
+              <span className={styles.clickable} onClick={() => navigate(`/product/${b.product_id}`)}>{b.product_name}</span>
+              <span className={b.type === 'bid' ? styles.green : styles.red}>{b.type.toUpperCase()} ${b.amount}</span>
+              <span className={styles.status}>{b.status}</span>
+              {b.status === 'active' && (
+                <button onClick={(e) => cancelBid(b.id, e)} className={styles.cancelBtn}>Cancel</button>
+              )}
             </div>
           ))
         )}
@@ -50,7 +82,9 @@ export default function Dashboard() {
           orders.length === 0 ? <p className={styles.empty}>No orders yet.</p> :
           orders.map((o) => (
             <div key={o.id} className={styles.row}>
-              <span>{o.product_name}</span><span>${o.price}</span><span className={styles.status}>{o.status}</span>
+              <span className={styles.clickable} onClick={() => navigate(`/product/${o.product_id}`)}>{o.product_name}</span>
+              <span>${o.price}</span>
+              <span className={styles.status}>{o.buyer_id === user.id ? 'BOUGHT' : 'SOLD'}</span>
             </div>
           ))
         )}
