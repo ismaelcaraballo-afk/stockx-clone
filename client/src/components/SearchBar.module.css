@@ -1,0 +1,30 @@
+.form {
+  display: flex;
+  gap: 8px;
+  max-width: 500px;
+}
+.input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+}
+.input:focus {
+  outline: none;
+  border-color: #08a05c;
+}
+.btn {
+  padding: 10px 20px;
+  background: #08a05c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.btn:hover {
+  background: #069b53;
+}

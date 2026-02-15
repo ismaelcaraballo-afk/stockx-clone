@@ -1,0 +1,30 @@
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+.logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #08a05c;
+}
+.links {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.links a {
+  color: #ccc;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+.links a:hover {
+  color: #fff;
+}
+.user {
+  color: #08a05c;
+  font-size: 14px;
+}
