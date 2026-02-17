@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import api from '../api.js'
 import ProductCard from '../components/ProductCard.jsx'
+import ProductSlider from '../components/ProductSlider.jsx'
 import SearchBar from '../components/SearchBar.jsx'
 import { CardGridSkeleton } from '../components/Skeleton.jsx'
+import clothingData from '../data/clothing.json'
 import styles from './Home.module.css'
 
 export default function Home() {
@@ -31,6 +33,11 @@ export default function Home() {
     setBrand('')
     setSort('')
   }
+
+  // Build clothing slider items from Michael's data
+  const clothingItems = Array.isArray(clothingData)
+    ? clothingData.filter((item) => (item.src || '').startsWith('/Clothing/'))
+    : []
 
   return (
     <div className={styles.page}>
@@ -79,6 +86,9 @@ export default function Home() {
             <button onClick={clearFilters} className={styles.clearBtn}>Clear Filters</button>
           )}
         </div>
+      )}
+      {clothingItems.length > 0 && (
+        <ProductSlider items={clothingItems} title="Featured Apparel" variant="grey" rows={1} />
       )}
     </div>
   )

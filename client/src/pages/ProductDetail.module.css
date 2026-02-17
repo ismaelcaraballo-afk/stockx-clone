@@ -1,52 +1,305 @@
-.page { max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; gap: 40px; }
-.left { flex: 1; }
-.right { flex: 1; }
-.viewToggle { display: flex; gap: 8px; margin-bottom: 12px; }
-.toggleBtn { padding: 8px 18px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #ccc; font-size: 13px; font-weight: 600; }
-.toggleBtn:hover { border-color: #08a05c; color: #fff; }
-.activeToggle { background: #08a05c; border-color: #08a05c; color: #fff; }
-.arBtn { padding: 8px 18px; background: #1a1a1a; border: 1px solid #9b59b6; border-radius: 4px; color: #9b59b6; font-size: 13px; font-weight: 600; margin-left: auto; }
-.arBtn:hover { background: #9b59b6; color: #fff; }
-.imageWrap { background: #f5f5f5; border-radius: 8px; padding: 40px; display: flex; align-items: center; justify-content: center; min-height: 400px; }
-.image { max-width: 100%; max-height: 350px; object-fit: contain; }
-.brand { font-size: 14px; color: #888; text-transform: uppercase; }
-.name { font-size: 24px; font-weight: 700; margin: 8px 0; }
-.size { font-size: 14px; color: #aaa; margin-bottom: 8px; }
-.desc { font-size: 14px; color: #ccc; line-height: 1.5; margin-bottom: 8px; }
-.seller { font-size: 13px; color: #666; margin-bottom: 16px; }
-.deleteBtn { padding: 6px 16px; background: none; border: 1px solid #d63031; border-radius: 4px; color: #d63031; font-size: 12px; margin-bottom: 16px; cursor: pointer; }
-.deleteBtn:hover { background: #d63031; color: #fff; }
-.priceRow { display: flex; gap: 12px; margin-bottom: 12px; }
-.priceBox { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 10px; text-align: center; }
-.label { display: block; font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
-.val { font-size: 18px; font-weight: 700; color: #08a05c; }
-.statsRow { display: flex; gap: 16px; margin-bottom: 16px; font-size: 12px; color: #888; }
-.instantRow { display: flex; gap: 12px; margin-bottom: 16px; }
-.buyNowBtn { flex: 1; padding: 14px; background: #08a05c; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; }
-.buyNowBtn:hover:not(:disabled) { background: #069b53; }
-.buyNowBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-.sellNowBtn { flex: 1; padding: 14px; background: #d63031; color: #fff; border: none; border-radius: 6px; font-size: 15px; font-weight: 700; }
-.sellNowBtn:hover:not(:disabled) { background: #c0392b; }
-.sellNowBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-.orDivider { text-align: center; margin-bottom: 16px; color: #555; font-size: 12px; position: relative; }
-.orDivider::before, .orDivider::after { content: ''; position: absolute; top: 50%; width: 35%; height: 1px; background: #333; }
-.orDivider::before { left: 0; }
-.orDivider::after { right: 0; }
-.orDivider span { padding: 0 12px; background: #0e0e0e; position: relative; }
-.actions { display: flex; flex-direction: column; gap: 12px; }
-.actionGroup { display: flex; gap: 8px; }
-.input { flex: 1; padding: 10px; border: 1px solid #333; border-radius: 4px; background: #1a1a1a; color: #fff; font-size: 14px; }
-.input:focus { outline: none; border-color: #08a05c; }
-.bidBtn { padding: 10px 24px; background: #08a05c; color: #fff; border: none; border-radius: 4px; font-weight: 600; }
-.askBtn { padding: 10px 24px; background: #d63031; color: #fff; border: none; border-radius: 4px; font-weight: 600; }
-.bidBtn:hover { background: #069b53; }
-.askBtn:hover { background: #c0392b; }
-.message { margin-top: 16px; color: #08a05c; font-size: 14px; }
-.loading { text-align: center; padding: 60px; color: #888; }
-.historySection { margin-top: 24px; border-top: 1px solid #333; padding-top: 16px; }
-.historySection h3 { font-size: 16px; margin-bottom: 12px; color: #ccc; }
-.historyRow { display: flex; justify-content: space-between; padding: 8px 12px; background: #1a1a1a; border-radius: 4px; margin-bottom: 4px; font-size: 14px; }
-.historyDate { color: #888; font-size: 12px; }
-.priceWarning { color: #e67e22; font-size: 12px; margin-top: -6px; padding-left: 4px; }
-.messageError { margin-top: 16px; color: #d63031; font-size: 14px; }
-.loginPrompt { color: #e67e22; font-size: 13px; margin-bottom: 12px; padding: 8px 12px; background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.2); border-radius: 6px; text-align: center; }
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+  display: flex;
+  gap: 40px;
+}
+
+.left {
+  flex: 1;
+  min-width: 0;
+}
+
+.right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.detailsBlock {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+/* View toggle */
+.viewToggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.toggleBtn {
+  padding: 8px 18px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #999;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  border-color: #08a05c;
+  color: #fff;
+}
+
+.activeToggle {
+  background: #08a05c;
+  border-color: #08a05c;
+  color: #fff;
+}
+
+.arBtn {
+  padding: 8px 18px;
+  background: #1a1a1a;
+  border: 1px solid #9b59b6;
+  border-radius: 6px;
+  color: #9b59b6;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: auto;
+  transition: all 0.2s;
+}
+
+.arBtn:hover {
+  background: #9b59b6;
+  color: #fff;
+}
+
+/* Image area */
+.imageWrap {
+  background: #e8e8e8;
+  border-radius: 10px;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 350px;
+  object-fit: contain;
+}
+
+/* Product info - compact, small readable fonts */
+.brand {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 500;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 6px 0 4px;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+  color: #e0e0e0;
+}
+
+.size {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+.desc {
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* Price row */
+.priceRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.priceBox {
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.label {
+  display: block;
+  font-size: 9px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #08a05c;
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #08a05c;
+  box-shadow: 0 0 0 3px rgba(8, 160, 92, 0.1);
+}
+
+.input::placeholder {
+  color: #555;
+}
+
+.bidBtn {
+  padding: 12px 28px;
+  background: #08a05c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.askBtn {
+  padding: 12px 28px;
+  background: #d63031;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.bidBtn:hover {
+  background: #069b53;
+}
+
+.askBtn:hover {
+  background: #c0392b;
+}
+
+.bidBtn:active,
+.askBtn:active {
+  transform: scale(0.97);
+}
+
+.message {
+  margin-top: 16px;
+  color: #08a05c;
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px;
+  color: #888;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page {
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px 16px;
+  }
+  .imageWrap {
+    min-height: 280px;
+    padding: 24px;
+  }
+  .image {
+    max-height: 240px;
+  }
+  .name {
+    font-size: 20px;
+  }
+  .priceRow {
+    gap: 8px;
+  }
+  .priceBox {
+    padding: 8px 6px;
+  }
+  .val {
+    font-size: 12px;
+  }
+  .label {
+    font-size: 8px;
+  }
+  .viewToggle {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .actionGroup {
+    flex-direction: column;
+  }
+  .bidBtn,
+  .askBtn {
+    width: 100%;
+    text-align: center;
+    padding: 14px;
+  }
+}
+
+.priceWarning {
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  color: #f57f17;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+.messageError {
+  background: #ffebee;
+  border: 1px solid #f44336;
+  color: #c62828;
+}
+
+.loginPrompt {
+  text-align: center;
+  padding: 16px;
+  color: #888;
+  font-size: 0.9rem;
+  border: 1px dashed #444;
+  border-radius: 8px;
+  margin-top: 12px;
+}

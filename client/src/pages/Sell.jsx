@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api.js'
+import { useToast } from '../components/Toast.jsx'
 import styles from './Sell.module.css'
 
 const BRANDS = ['Nike', 'Adidas', 'New Balance', 'Puma', 'Reebok', 'Converse', 'Vans', 'Jordan', 'Other']
@@ -9,6 +10,7 @@ const CATEGORIES = ['sneakers', 'boots', 'sandals', 'casual', 'running']
 
 export default function Sell() {
   const navigate = useNavigate()
+  const toast = useToast()
   const user = JSON.parse(localStorage.getItem('user') || 'null')
   const [form, setForm] = useState({
     name: '',
@@ -49,7 +51,7 @@ export default function Sell() {
       })
       navigate(`/product/${res.data.id}`)
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create listing')
+      const msg = err.response?.data?.error || 'Failed to create listing'; toast.error(msg); setError(msg)
     } finally {
       setSubmitting(false)
     }

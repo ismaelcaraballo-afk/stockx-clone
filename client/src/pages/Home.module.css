@@ -1,17 +1,332 @@
-.page { max-width: 1200px; margin: 0 auto; padding: 32px; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.header h1 { font-size: 28px; }
-.filterRow { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.filters { display: flex; gap: 8px; flex-wrap: wrap; }
-.filterBtn { padding: 8px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 20px; color: #ccc; font-size: 13px; }
-.filterBtn:hover, .active { background: #08a05c; border-color: #08a05c; color: #fff; }
-.sortSelect { padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #ccc; font-size: 13px; appearance: auto; }
-.sortSelect:focus { outline: none; border-color: #08a05c; }
-.count { color: #666; font-size: 13px; margin-bottom: 16px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-.empty { text-align: center; color: #888; margin-top: 60px; font-size: 16px; }
-.emptyState { text-align: center; margin-top: 48px; padding: 40px; }
-.emptyTitle { font-size: 20px; color: #888; margin-bottom: 8px; }
-.emptyDetail { font-size: 14px; color: #555; margin-bottom: 16px; }
-.clearBtn { padding: 10px 24px; background: none; border: 1px solid #08a05c; border-radius: 20px; color: #08a05c; font-size: 13px; font-weight: 600; cursor: pointer; }
-.clearBtn:hover { background: #08a05c; color: #fff; }
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.viewerSection {
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.detailsCard {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid #333;
+  border-radius: 8px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.detailsCard:hover {
+  border-color: #08a05c;
+  background: rgba(26, 26, 26, 0.98);
+}
+
+.detailsBrand {
+  font-size: 10px;
+  color: #c0c0c0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailsName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8e8;
+}
+
+.detailsSize {
+  font-size: 11px;
+  color: #d0d0d0;
+}
+
+.detailsPrice {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0e0e0;
+  margin-top: 2px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 20px;
+}
+
+.header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.section {
+  margin-bottom: 24px;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionGrey {
+  background: #2a2a2a;
+}
+
+.sectionBlack {
+  background: #111;
+  border: 1px solid #1a1a1a;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.2px;
+}
+
+.filterBtn {
+  padding: 8px 18px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 20px;
+  color: #999;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.filterBtn:hover,
+.active {
+  background: #08a05c;
+  border-color: #08a05c;
+  color: #fff;
+}
+
+.radioRow {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.radioLabel input {
+  accent-color: #08a05c;
+}
+
+.radio:checked + span {
+  color: #08a05c;
+}
+
+.formArea {
+  padding: 24px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+}
+
+.bidSellForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formField label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #999;
+}
+
+.formField input {
+  padding: 10px 14px;
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.formField input::placeholder {
+  color: #555;
+}
+
+.formField input:focus {
+  outline: none;
+  border-color: #08a05c;
+}
+
+.bidSellForm .submitBtn {
+  padding: 12px 24px;
+  background: #08a05c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.2s;
+}
+
+.bidSellForm .submitBtn:hover {
+  background: #069b53;
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  padding: 48px 0 32px;
+  margin-top: 40px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.footerCol h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #888;
+  margin: 0 0 12px 0;
+}
+
+.footerCol p {
+  font-size: 13px;
+  color: #999;
+  margin: 0 0 6px 0;
+  cursor: pointer;
+}
+
+.footerCol p:hover {
+  color: #08a05c;
+}
+
+.empty {
+  text-align: center;
+  color: #666;
+  margin-top: 60px;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 20px 16px;
+  }
+  .detailsCard {
+    padding: 8px 12px;
+    bottom: 8px;
+    right: 8px;
+  }
+  .detailsName {
+    font-size: 12px;
+  }
+  .detailsPrice {
+    font-size: 13px;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header h1 {
+    font-size: 24px;
+  }
+  .section {
+    margin-bottom: 32px;
+  }
+  .sectionTitle {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .footer {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    padding: 32px 0 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+  .footer {
+    grid-template-columns: 1fr;
+  }
+  .filters {
+    gap: 6px;
+  }
+  .filterBtn {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: #888;
+}
+
+.emptyTitle {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  color: #aaa;
+}
+
+.emptyDetail {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.clearBtn {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.clearBtn:hover {
+  background: #444;
+}
