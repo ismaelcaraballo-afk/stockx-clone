@@ -56,7 +56,13 @@ export default function Dashboard() {
       </div>
       <div className={styles.content}>
         {tab === 'listings' && (
-          listings.length === 0 ? <p className={styles.empty}>No listings yet. <span className={styles.link} onClick={() => navigate('/sell')}>Create one</span></p> :
+          listings.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>📦</span>
+              <p className={styles.emptyTitle}>No listings yet</p>
+              <p className={styles.emptyText}>List your first pair and start selling. <span className={styles.link} onClick={() => navigate('/sell')}>Create one</span></p>
+            </div>
+          ) :
           listings.map((p) => (
             <div key={p.id} className={styles.row}>
               <span className={styles.clickable} onClick={() => navigate(`/product/${p.id}`)}>{p.name}</span>
@@ -66,7 +72,13 @@ export default function Dashboard() {
           ))
         )}
         {tab === 'bids' && (
-          bids.length === 0 ? <p className={styles.empty}>No bids yet.</p> :
+          bids.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>🏷️</span>
+              <p className={styles.emptyTitle}>No bids yet</p>
+              <p className={styles.emptyText}>Browse sneakers and place your first bid.</p>
+            </div>
+          ) :
           bids.map((b) => (
             <div key={b.id} className={styles.row}>
               <span className={styles.clickable} onClick={() => navigate(`/product/${b.product_id}`)}>{b.product_name}</span>
@@ -79,7 +91,13 @@ export default function Dashboard() {
           ))
         )}
         {tab === 'orders' && (
-          orders.length === 0 ? <p className={styles.empty}>No orders yet.</p> :
+          orders.length === 0 ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyIcon}>📋</span>
+              <p className={styles.emptyTitle}>No orders yet</p>
+              <p className={styles.emptyText}>When a bid matches an ask, your order will appear here.</p>
+            </div>
+          ) :
           orders.map((o) => (
             <div key={o.id} className={styles.row}>
               <span className={styles.clickable} onClick={() => navigate(`/product/${o.product_id}`)}>{o.product_name}</span>
