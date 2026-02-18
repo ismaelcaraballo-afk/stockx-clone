@@ -1,5 +1,82 @@
 const pool = require("./db");
 const bcrypt = require("bcrypt");
+const shoesData = require("../client/src/data/shoes.json");
+const clothingData = require("../client/src/data/clothing.json");
+
+// Generate a clean display name from the file-based name
+function cleanName(rawName) {
+  return rawName
+    .replace(/\.jpg$/i, "")
+    .replace(/\.avif$/i, "")
+    .replace(/-Product.*$/i, "")
+    .replace(/-V\d+$/i, "")
+    .replace(/-/g, " ")
+    .trim();
+}
+
+// Map brand folder keys to proper brand names
+const brandMap = {
+  NIKE: "Nike",
+  ADIDAS: "Adidas",
+  NEWBALANCE: "New Balance",
+  ALL: null, // detect from name
+};
+
+// Detect brand from product name for the ALL category
+function detectBrand(name) {
+  const lower = name.toLowerCase();
+  if (lower.includes("nike") || lower.includes("jordan") || lower.includes("air force") || lower.includes("dunk") || lower.includes("air max")) return "Nike";
+  if (lower.includes("adidas") || lower.includes("yeezy") || lower.includes("samba") || lower.includes("gazelle")) return "Adidas";
+  if (lower.includes("new balance")) return "New Balance";
+  if (lower.includes("asics") || lower.includes("gel-")) return "ASICS";
+  if (lower.includes("converse") || lower.includes("chuck")) return "Converse";
+  if (lower.includes("vans") || lower.includes("old skool")) return "Vans";
+  if (lower.includes("puma")) return "Puma";
+  if (lower.includes("reebok")) return "Reebok";
+  if (lower.includes("salomon")) return "Salomon";
+  if (lower.includes("hoka")) return "Hoka";
+  if (lower.includes("crocs")) return "Crocs";
+  if (lower.includes("birkenstock")) return "Birkenstock";
+  if (lower.includes("ugg")) return "UGG";
+  return "Other";
+}
+
+// Generate realistic retail prices based on brand
+function getPrice(brand) {
+  const ranges = {
+    Nike: [90, 250],
+    Adidas: [80, 230],
+    "New Balance": [90, 220],
+    ASICS: [100, 180],
+    Converse: [55, 85],
+    Vans: [60, 90],
+    Puma: [65, 120],
+    Reebok: [70, 110],
+    Salomon: [130, 200],
+    Hoka: [120, 200],
+    Crocs: [40, 70],
+    Birkenstock: [100, 160],
+    UGG: [100, 200],
+    Other: [80, 180],
+  };
+  const [min, max] = ranges[brand] || [80, 180];
+  return Math.round(min + Math.random() * (max - min));
+}
+
+// Random size
+function getSize() {
+  const sizes = ["7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "13"];
+  return sizes[Math.floor(Math.random() * sizes.length)];
+}
+
+// Detect category from name
+function getCategory(name) {
+  const lower = name.toLowerCase();
+  if (lower.includes("slide") || lower.includes("sandal")) return "sandals";
+  if (lower.includes("boot") || lower.includes("goadome")) return "boots";
+  if (lower.includes("cleat") || lower.includes("mercurial") || lower.includes("phantom") || lower.includes("menace")) return "cleats";
+  return "sneakers";
+}
 
 async function seed() {
   try {
@@ -18,68 +95,73 @@ async function seed() {
     ]);
     console.log("Users seeded");
 
-    const s1 = users[0].rows[0]?.id || 1;
-    const s2 = users[1].rows[0]?.id || 2;
-    const s3 = users[2].rows[0]?.id || 3;
-    const s4 = users[3].rows[0]?.id || 4;
-    const s5 = users[4].rows[0]?.id || 5;
+    const sellerIds = users.map((u) => u.rows[0]?.id).filter(Boolean);
+    if (sellerIds.length === 0) {
+      const existing = await pool.query("SELECT id FROM users ORDER BY id LIMIT 5");
+      sellerIds.push(...existing.rows.map((r) => r.id));
+    }
+    const pickSeller = () => sellerIds[Math.floor(Math.random() * sellerIds.length)];
 
-    const sneakers = [
-      // Nike
-      { name: "Air Jordan 1 Retro High OG Chicago", brand: "Nike", description: "The iconic Chicago colorway. White, black, and varsity red leather upper.", image_url: "https://images.stockx.com/images/Air-Jordan-1-Retro-High-OG-Chicago-2015.jpg", retail_price: 170, size: "10", category: "sneakers", seller_id: s1 },
-      { name: "Nike Dunk Low Panda", brand: "Nike", description: "Clean black and white colorway. Leather upper with classic Dunk styling.", image_url: "https://images.stockx.com/images/Nike-Dunk-Low-Retro-White-Black-2021.jpg", retail_price: 100, size: "9.5", category: "sneakers", seller_id: s2 },
-      { name: "Air Force 1 Low White", brand: "Nike", description: "The classic all-white AF1. Full-grain leather upper.", image_url: "https://images.stockx.com/images/Nike-Air-Force-1-Low-White-07.jpg", retail_price: 90, size: "10.5", category: "sneakers", seller_id: s3 },
-      { name: "Jordan 4 Retro Bred", brand: "Nike", description: "Black cement grey and fire red. Iconic Jordan 4 colorway.", image_url: "https://images.stockx.com/images/Air-Jordan-4-Retro-Bred-2019.jpg", retail_price: 200, size: "10", category: "sneakers", seller_id: s1 },
-      { name: "Nike SB Dunk Low Travis Scott", brand: "Nike", description: "Cactus Jack collaboration. Paisley print with mismatched Swooshes.", image_url: "https://images.stockx.com/images/Nike-SB-Dunk-Low-Travis-Scott.jpg", retail_price: 150, size: "9", category: "sneakers", seller_id: s4 },
-      { name: "Air Jordan 11 Retro Bred", brand: "Nike", description: "Patent leather mudguard with black and red upper. Holiday 2019 release.", image_url: "https://images.stockx.com/images/Air-Jordan-11-Retro-Bred-2019.jpg", retail_price: 220, size: "11", category: "sneakers", seller_id: s2 },
-      { name: "Nike Air Max 90 Infrared", brand: "Nike", description: "OG infrared colorway. Mesh and suede upper with visible Air unit.", image_url: "https://images.stockx.com/images/Nike-Air-Max-90-Infrared-2020.jpg", retail_price: 140, size: "10", category: "sneakers", seller_id: s1 },
-      { name: "Air Jordan 1 Low Travis Scott Reverse Mocha", brand: "Nike", description: "Reverse mocha colorway with Cactus Jack branding and backwards Swoosh.", image_url: "https://images.stockx.com/images/Air-Jordan-1-Low-OG-SP-Travis-Scott-Reverse-Mocha.jpg", retail_price: 150, size: "10", category: "sneakers", seller_id: s5 },
-      { name: "Nike Dunk Low Grey Fog", brand: "Nike", description: "Grey and white leather construction with classic Dunk lines.", image_url: "https://images.stockx.com/images/Nike-Dunk-Low-Grey-Fog.jpg", retail_price: 100, size: "9", category: "sneakers", seller_id: s3 },
-      { name: "Air Jordan 3 Retro White Cement Reimagined", brand: "Nike", description: "Reimagined version of the iconic White Cement colorway with no Nike Air on the heel.", image_url: "https://images.stockx.com/images/Air-Jordan-3-Retro-White-Cement-Reimagined.jpg", retail_price: 200, size: "10.5", category: "sneakers", seller_id: s4 },
-      { name: "Nike Air Max 1 Patta Waves Monarch", brand: "Nike", description: "Collaboration with Patta featuring wavy mudguard and premium materials.", image_url: "https://images.stockx.com/images/Nike-Air-Max-1-Patta-Waves-Monarch.jpg", retail_price: 160, size: "9.5", category: "sneakers", seller_id: s1 },
-      { name: "Air Jordan 5 Retro Fire Red", brand: "Nike", description: "OG Fire Red colorway with reflective tongue and shark teeth midsole.", image_url: "https://images.stockx.com/images/Air-Jordan-5-Retro-Fire-Red-Silver-Tongue-2020.jpg", retail_price: 200, size: "11", category: "sneakers", seller_id: s2 },
+    // Build product list from Michael's shoe images
+    const sneakers = [];
+    const seen = new Set();
 
-      // Adidas
-      { name: "Yeezy Boost 350 V2 Zebra", brand: "Adidas", description: "White and core black Primeknit upper with red SPLY-350 branding.", image_url: "https://images.stockx.com/images/Adidas-Yeezy-Boost-350-V2-Zebra.jpg", retail_price: 220, size: "10", category: "sneakers", seller_id: s2 },
-      { name: "Adidas Samba OG White", brand: "Adidas", description: "Classic indoor soccer shoe. White leather with gum sole.", image_url: "https://images.stockx.com/images/Adidas-Samba-OG-Cloud-White.jpg", retail_price: 100, size: "10", category: "sneakers", seller_id: s1 },
-      { name: "Yeezy Boost 350 V2 Beluga Reflective", brand: "Adidas", description: "Grey and solar red Primeknit with reflective stripe.", image_url: "https://images.stockx.com/images/Adidas-Yeezy-Boost-350-V2-Beluga-Reflective.jpg", retail_price: 230, size: "10.5", category: "sneakers", seller_id: s4 },
-      { name: "Adidas Campus 00s Grey", brand: "Adidas", description: "Retro campus silhouette in grey suede with white stripes.", image_url: "https://images.stockx.com/images/Adidas-Campus-00s-Grey-White.jpg", retail_price: 100, size: "9", category: "sneakers", seller_id: s3 },
-      { name: "Yeezy Slide Onyx", brand: "Adidas", description: "All-black injected EVA foam slide. Minimal and comfortable.", image_url: "https://images.stockx.com/images/Adidas-Yeezy-Slide-Onyx.jpg", retail_price: 70, size: "10", category: "sandals", seller_id: s5 },
-      { name: "Adidas Gazelle Bold Pink Glow", brand: "Adidas", description: "Platform Gazelle in pink glow suede with cream sole.", image_url: "https://images.stockx.com/images/Adidas-Gazelle-Bold-Pink-Glow.jpg", retail_price: 120, size: "8", category: "sneakers", seller_id: s2 },
+    for (const [folder, items] of Object.entries(shoesData)) {
+      for (const item of items) {
+        if (seen.has(item.src)) continue;
+        seen.add(item.src);
+        const name = cleanName(item.name);
+        const brand = brandMap[folder] || detectBrand(name);
+        sneakers.push({
+          name,
+          brand,
+          description: `${name}. Premium quality, authenticated.`,
+          image_url: item.src,
+          retail_price: getPrice(brand),
+          size: getSize(),
+          category: getCategory(name),
+          seller_id: pickSeller(),
+        });
+      }
+    }
 
-      // New Balance
-      { name: "New Balance 550 White Green", brand: "New Balance", description: "Retro basketball silhouette with white leather and green accents.", image_url: "https://images.stockx.com/images/New-Balance-550-White-Green.jpg", retail_price: 110, size: "11", category: "sneakers", seller_id: s1 },
-      { name: "New Balance 2002R Protection Pack Rain Cloud", brand: "New Balance", description: "Deconstructed upper with raw edges. Rain Cloud grey colorway.", image_url: "https://images.stockx.com/images/New-Balance-2002R-Protection-Pack-Rain-Cloud.jpg", retail_price: 130, size: "10", category: "sneakers", seller_id: s3 },
-      { name: "New Balance 990v6 Grey", brand: "New Balance", description: "Made in USA. Premium grey suede and mesh upper with ENCAP midsole.", image_url: "https://images.stockx.com/images/New-Balance-990v6-Made-in-USA-Grey.jpg", retail_price: 200, size: "10.5", category: "sneakers", seller_id: s4 },
-      { name: "New Balance 530 White Silver", brand: "New Balance", description: "Retro running shoe with mesh and synthetic upper. ABZORB cushioning.", image_url: "https://images.stockx.com/images/New-Balance-530-White-Silver-Navy.jpg", retail_price: 100, size: "9.5", category: "sneakers", seller_id: s5 },
+    // Add clothing items
+    const clothing = [];
+    if (Array.isArray(clothingData)) {
+      for (const item of clothingData) {
+        if (!item.src || !item.src.startsWith("/Clothing/")) continue;
+        const name = cleanName(item.name || item.src.split("/").pop());
+        clothing.push({
+          name,
+          brand: detectBrand(name) === "Other" ? "Streetwear" : detectBrand(name),
+          description: `${name}. Authentic, deadstock condition.`,
+          image_url: item.src,
+          retail_price: Math.round(40 + Math.random() * 260),
+          size: ["S", "M", "L", "XL"][Math.floor(Math.random() * 4)],
+          category: "apparel",
+          seller_id: pickSeller(),
+        });
+      }
+    }
 
-      // Converse / Vans / Other
-      { name: "Converse Chuck Taylor All Star Low White", brand: "Converse", description: "The original. Canvas upper, rubber toe cap, All Star patch.", image_url: "https://images.stockx.com/images/Converse-Chuck-Taylor-All-Star-Low-White.jpg", retail_price: 55, size: "10", category: "sneakers", seller_id: s1 },
-      { name: "Vans Old Skool Black White", brand: "Vans", description: "Classic skate shoe. Suede and canvas with the iconic side stripe.", image_url: "https://images.stockx.com/images/Vans-Old-Skool-Black-White.jpg", retail_price: 65, size: "10", category: "sneakers", seller_id: s2 },
-      { name: "Puma Suede Classic Black", brand: "Puma", description: "Suede upper with Formstrip and Puma logo. Classic since 1968.", image_url: "https://images.stockx.com/images/Puma-Suede-Classic-XXI-Black-White.jpg", retail_price: 70, size: "10", category: "sneakers", seller_id: s3 },
-      { name: "Reebok Club C 85 Vintage White", brand: "Reebok", description: "Clean white leather tennis shoe with off-white midsole for vintage look.", image_url: "https://images.stockx.com/images/Reebok-Club-C-85-Vintage-White.jpg", retail_price: 75, size: "10", category: "sneakers", seller_id: s4 },
-      { name: "ASICS Gel-Kayano 14 Silver", brand: "ASICS", description: "Y2K running silhouette. GEL cushioning with metallic silver upper.", image_url: "https://images.stockx.com/images/ASICS-Gel-Kayano-14-White-Midnight.jpg", retail_price: 150, size: "10", category: "sneakers", seller_id: s5 },
-    ];
+    const allProducts = [...sneakers, ...clothing];
 
-    for (const s of sneakers) {
+    for (const p of allProducts) {
       await pool.query(
         "INSERT INTO products (name, brand, description, image_url, retail_price, size, category, seller_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-        [s.name, s.brand, s.description, s.image_url, s.retail_price, s.size, s.category, s.seller_id]
+        [p.name, p.brand, p.description, p.image_url, p.retail_price, p.size, p.category, p.seller_id]
       );
     }
-    console.log("Products seeded: " + sneakers.length + " sneakers");
+    console.log(`Products seeded: ${sneakers.length} shoes + ${clothing.length} apparel = ${allProducts.length} total`);
 
-    // Add bids and asks for most products
+    // Add bids and asks for all products
     const products = await pool.query("SELECT id, retail_price FROM products");
     for (const p of products.rows) {
       const price = Number(p.retail_price);
-      // Random bid below retail
       const bidPrice = Math.round(price * (0.8 + Math.random() * 0.3));
-      // Random ask above retail
       const askPrice = Math.round(price * (1.1 + Math.random() * 0.5));
-      // Pick random users for bid and ask
-      const bidUser = [s1, s2, s3, s4, s5][Math.floor(Math.random() * 5)];
-      const askUser = [s1, s2, s3, s4, s5][Math.floor(Math.random() * 5)];
+      const bidUser = pickSeller();
+      const askUser = pickSeller();
       await pool.query(
         "INSERT INTO bids (product_id, user_id, amount, type, status) VALUES ($1, $2, $3, 'bid', 'active')",
         [p.id, bidUser, bidPrice]
@@ -91,13 +173,13 @@ async function seed() {
     }
     console.log("Bids/asks seeded for all products");
 
-    // Create some completed orders for price history
-    const prods = await pool.query("SELECT id, retail_price FROM products LIMIT 10");
+    // Create sample completed orders for price history
+    const prods = await pool.query("SELECT id, retail_price FROM products LIMIT 20");
     for (const p of prods.rows) {
       const price = Number(p.retail_price);
       const salePrice = Math.round(price * (0.9 + Math.random() * 0.4));
-      const buyer = [s1, s2, s3, s4, s5][Math.floor(Math.random() * 5)];
-      const seller = [s1, s2, s3, s4, s5][Math.floor(Math.random() * 5)];
+      const buyer = pickSeller();
+      const seller = pickSeller();
       if (buyer !== seller) {
         await pool.query(
           "INSERT INTO orders (product_id, buyer_id, seller_id, price, status) VALUES ($1, $2, $3, $4, 'completed')",
@@ -107,7 +189,7 @@ async function seed() {
     }
     console.log("Sample orders seeded for price history");
 
-    console.log("Seed complete! " + sneakers.length + " products loaded.");
+    console.log(`Seed complete! ${allProducts.length} products loaded.`);
     process.exit(0);
   } catch (err) {
     console.error("Seed error:", err);

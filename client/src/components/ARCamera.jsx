@@ -58,6 +58,65 @@ function ScanRing({ active, position }) {
   )
 }
 
+// Floating product image card that shows the actual product photo
+function ProductBillboard({ image, visible, position }) {
+  const ref = useRef()
+  const texRef = useRef()
+  const [tex, setTex] = useState(null)
+
+  useEffect(() => {
+    if (!image) return
+    const loader = new THREE.TextureLoader()
+    // image can be a URL string or an Image element
+    if (typeof image === 'string') {
+      loader.load(image, (t) => setTex(t))
+    } else {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(image, 0, 0)
+      const t = new THREE.CanvasTexture(canvas)
+      setTex(t)
+    }
+  }, [image])
+
+  useFrame((state) => {
+    if (!ref.current || !visible) return
+    // Gentle float animation
+    const t = state.clock.getElapsedTime()
+    ref.current.position.y = position[1] + Math.sin(t * 1.2 + 1) * 0.015
+    // Always face camera
+    ref.current.lookAt(state.camera.position)
+  })
+
+  if (!visible || !tex) return null
+
+  const aspect = tex.image ? tex.image.width / tex.image.height : 1
+  const height = 1.2
+  const width = height * aspect
+
+  return (
+    <group ref={ref} position={position}>
+      {/* Card background */}
+      <mesh position={[0, 0, -0.01]}>
+        <planeGeometry args={[width + 0.1, height + 0.1]} />
+        <meshBasicMaterial color="#1a1a1a" transparent opacity={0.9} />
+      </mesh>
+      {/* Product image */}
+      <mesh>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial map={tex} transparent />
+      </mesh>
+      {/* Border glow */}
+      <mesh position={[0, 0, -0.02]}>
+        <planeGeometry args={[width + 0.15, height + 0.15]} />
+        <meshBasicMaterial color="#08a05c" transparent opacity={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
 function ARShoe({ id, position, scale, colorway, visible, rotation, spinning, isActive, onTap }) {
   const ref = useRef()
   const { nodes, materials } = useGLTF('/models/shoe.glb')
@@ -180,12 +239,19 @@ function DragControls({ onDrag, onPinch, onRotate }) {
     }
     const onTouchEnd = () => { dragging.current = false }
 
+    const onWheel = (e) => {
+      e.preventDefault()
+      const delta = -e.deltaY * 0.005
+      onPinch(delta)
+    }
+
     canvas.addEventListener('mousedown', onMouseDown)
     canvas.addEventListener('mousemove', onMouseMove)
     canvas.addEventListener('mouseup', onMouseUp)
     canvas.addEventListener('touchstart', onTouchStart, { passive: false })
     canvas.addEventListener('touchmove', onTouchMove, { passive: false })
     canvas.addEventListener('touchend', onTouchEnd)
+    canvas.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown)
@@ -194,13 +260,14 @@ function DragControls({ onDrag, onPinch, onRotate }) {
       canvas.removeEventListener('touchstart', onTouchStart)
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
+      canvas.removeEventListener('wheel', onWheel)
     }
   }, [gl, size, onDrag, onPinch, onRotate])
 
   return null
 }
 
-export default function ARCamera({ onClose }) {
+export default function ARCamera({ onClose, productImage, productName }) {
   const videoRef = useRef()
   const canvasRef = useRef()
   const streamRef = useRef(null)
@@ -210,6 +277,21 @@ export default function ARCamera({ onClose }) {
   const [captureFlash, setCaptureFlash] = useState(false)
   const [facingMode, setFacingMode] = useState('environment')
   const [showHints, setShowHints] = useState(true)
+  const [bgBlur, setBgBlur] = useState(false)
+  const [lightIntensity, setLightIntensity] = useState(0.7)
+  const [lastCapture, setLastCapture] = useState(null)
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const lightCanvas = useRef(null)
+  const [productTexture, setProductTexture] = useState(null)
+
+  // Load product image as texture for AR billboard
+  useEffect(() => {
+    if (!productImage) return
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => setProductTexture(img)
+    img.src = productImage
+  }, [productImage])
 
   // Surface detection simulation
   const [surfaceState, setSurfaceState] = useState('scanning') // 'scanning' | 'detected' | 'placed'
@@ -325,6 +407,34 @@ export default function ARCamera({ onClose }) {
     }
   }, [showHints, surfaceState])
 
+  // Light estimation — sample video brightness every 500ms
+  useEffect(() => {
+    if (!cameraReady || frozen) return
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 48
+    lightCanvas.current = canvas
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+    const interval = setInterval(() => {
+      if (!videoRef.current || videoRef.current.paused) return
+      ctx.drawImage(videoRef.current, 0, 0, 64, 48)
+      const frame = ctx.getImageData(0, 0, 64, 48)
+      const data = frame.data
+      let totalBrightness = 0
+      const pixelCount = data.length / 4
+      for (let i = 0; i < data.length; i += 16) {
+        totalBrightness += (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114)
+      }
+      const avgBrightness = totalBrightness / (pixelCount / 4) / 255
+      // Map 0-1 brightness to light intensity range 0.3 - 1.2
+      const intensity = 0.3 + avgBrightness * 0.9
+      setLightIntensity(prev => prev + (intensity - prev) * 0.15)
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [cameraReady, frozen])
+
   // Flip camera
   const flipCamera = useCallback(() => {
     const newMode = facingMode === 'environment' ? 'user' : 'environment'
@@ -351,6 +461,7 @@ export default function ARCamera({ onClose }) {
       case 'r': case 'R': updateActiveShoe({ rotation: activeShoe.rotation + 0.3 }); break
       case 'f': case 'F': flipCamera(); break
       case 's': case 'S': toggleSpin(); break
+      case 'b': case 'B': setBgBlur(b => !b); break
       case 'c': case 'C': if (shoes.length < 2) addCompareShoe(); break
       case 'Tab':
         e.preventDefault()
@@ -400,8 +511,8 @@ export default function ARCamera({ onClose }) {
     setFrozen(!frozen)
   }
 
-  // Screenshot
-  const captureScreenshot = () => {
+  // Screenshot + share
+  const captureScreenshot = useCallback(() => {
     try {
       const overlay = document.createElement('canvas')
       overlay.width = window.innerWidth
@@ -410,16 +521,57 @@ export default function ARCamera({ onClose }) {
       if (videoRef.current) ctx.drawImage(videoRef.current, 0, 0, overlay.width, overlay.height)
       const threeCanvas = document.querySelector('canvas')
       if (threeCanvas) ctx.drawImage(threeCanvas, 0, 0, overlay.width, overlay.height)
-      const link = document.createElement('a')
-      link.download = 'stockx-ar-tryon.png'
-      link.href = overlay.toDataURL('image/png')
-      link.click()
+      const dataUrl = overlay.toDataURL('image/png')
+      setLastCapture(dataUrl)
+      setShowShareMenu(true)
       setCaptureFlash(true)
       setTimeout(() => setCaptureFlash(false), 200)
     } catch (err) {
       console.error('Screenshot failed:', err)
     }
-  }
+  }, [])
+
+  const downloadCapture = useCallback(() => {
+    if (!lastCapture) return
+    const link = document.createElement('a')
+    link.download = 'stockx-ar-tryon.png'
+    link.href = lastCapture
+    link.click()
+    setShowShareMenu(false)
+  }, [lastCapture])
+
+  const shareCapture = useCallback(async () => {
+    if (!lastCapture) return
+    try {
+      const res = await fetch(lastCapture)
+      const blob = await res.blob()
+      const file = new File([blob], 'stockx-ar-tryon.png', { type: 'image/png' })
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'StockX AR Try-On' })
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        alert('Copied to clipboard!')
+      } else {
+        downloadCapture()
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') downloadCapture()
+    }
+    setShowShareMenu(false)
+  }, [lastCapture, downloadCapture])
+
+  const copyCapture = useCallback(async () => {
+    if (!lastCapture) return
+    try {
+      const res = await fetch(lastCapture)
+      const blob = await res.blob()
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      alert('Copied to clipboard!')
+    } catch {
+      alert('Copy not supported in this browser')
+    }
+    setShowShareMenu(false)
+  }, [lastCapture])
 
   // Set active shoe colorway
   const setColorway = (c) => updateActiveShoe({ colorway: c })
@@ -439,7 +591,7 @@ export default function ARCamera({ onClose }) {
     <div className={styles.overlay}>
       {captureFlash && <div className={styles.flash} />}
 
-      <video ref={videoRef} className={styles.video} playsInline muted />
+      <video ref={videoRef} className={`${styles.video} ${bgBlur ? styles.videoBlurred : ""}`} playsInline muted />
 
       {/* Surface detection scanning overlay */}
       {cameraReady && surfaceState === 'scanning' && (
@@ -477,9 +629,9 @@ export default function ARCamera({ onClose }) {
             gl={{ alpha: true, preserveDrawingBuffer: true }}
             style={{ background: 'transparent' }}
           >
-            <ambientLight intensity={0.7} />
-            <directionalLight position={[5, 5, 5]} intensity={0.6} />
-            <pointLight position={[-3, 3, 2]} intensity={0.3} />
+            <ambientLight intensity={lightIntensity} />
+            <directionalLight position={[5, 5, 5]} intensity={lightIntensity * 0.85} />
+            <pointLight position={[-3, 3, 2]} intensity={lightIntensity * 0.4} />
             <Suspense fallback={null}>
               {/* Surface grid */}
               <SurfaceGrid position={[0, surfaceY, 0]} detected={surfaceState === 'detected' || surfaceState === 'placed'} />
@@ -510,6 +662,12 @@ export default function ARCamera({ onClose }) {
                   />
                 </group>
               ))}
+              {/* Product image billboard */}
+              <ProductBillboard
+                image={productImage}
+                visible={surfaceState === 'placed'}
+                position={[activeShoe.pos[0] - 1.8, activeShoe.pos[1] + 0.8, activeShoe.pos[2]]}
+              />
             </Suspense>
             <DragControls onDrag={handleDrag} onPinch={handlePinch} onRotate={handleRotate} />
           </Canvas>
@@ -543,7 +701,7 @@ export default function ARCamera({ onClose }) {
       {/* Top bar */}
       <div className={styles.topBar}>
         <button onClick={onClose} className={styles.closeBtn}>Close</button>
-        <span className={styles.arLabel}>AR Try-On</span>
+        <span className={styles.arLabel}>{productName ? `AR: ${productName.slice(0, 25)}` : 'AR Try-On'}</span>
         <button onClick={captureScreenshot} className={styles.captureBtn}>Capture</button>
       </div>
 
@@ -582,12 +740,28 @@ export default function ARCamera({ onClose }) {
         </div>
       )}
 
+      {/* Share menu */}
+      {showShareMenu && lastCapture && (
+        <div className={styles.shareOverlay} onClick={() => setShowShareMenu(false)}>
+          <div className={styles.shareCard} onClick={(e) => e.stopPropagation()}>
+            <img src={lastCapture} alt="AR Capture" className={styles.sharePreview} />
+            <div className={styles.shareActions}>
+              <button onClick={downloadCapture} className={styles.shareBtn}>Download</button>
+              <button onClick={copyCapture} className={styles.shareBtn}>Copy</button>
+              <button onClick={shareCapture} className={`${styles.shareBtn} ${styles.sharePrimary}`}>Share</button>
+            </div>
+            <button onClick={() => setShowShareMenu(false)} className={styles.shareDismiss}>Dismiss</button>
+          </div>
+        </div>
+      )}
+
       {/* Bottom controls */}
       {surfaceState === 'placed' && (
         <div className={styles.hud}>
           <div className={styles.controlRow}>
             <button onClick={() => updateActiveShoe({ scale: Math.max(0.5, activeShoe.scale - 0.3) })} className={styles.ctrlBtn}>-</button>
             <button onClick={flipCamera} className={styles.ctrlBtn} title="Flip Camera (F)">Flip</button>
+            <button onClick={() => setBgBlur(b => !b)} className={`${styles.ctrlBtn} ${bgBlur ? styles.blurActive : ''}`} title="Background Blur (B)">Blur</button>
             <button onClick={toggleFreeze} className={`${styles.ctrlBtn} ${styles.freezeBtn} ${frozen ? styles.frozenActive : ''}`}>
               {frozen ? 'Unfreeze' : 'Freeze'}
             </button>
@@ -605,7 +779,7 @@ export default function ARCamera({ onClose }) {
             }} className={styles.ctrlBtn}>Reset</button>
             <button onClick={() => updateActiveShoe({ scale: Math.min(6, activeShoe.scale + 0.3) })} className={styles.ctrlBtn}>+</button>
           </div>
-          <p className={styles.hint}>Drag to move | Pinch to resize | Twist to rotate | C=compare | Tab=switch</p>
+          <p className={styles.hint}>Drag to move | Pinch to resize | Twist to rotate | B=blur | C=compare</p>
         </div>
       )}
     </div>

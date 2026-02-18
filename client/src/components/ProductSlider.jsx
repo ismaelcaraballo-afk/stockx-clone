@@ -80,7 +80,7 @@ export default function ProductSlider({ items, title, variant = 'grey', rows = 2
             <p className={styles.emptyState}>Coming soon — add clothing images</p>
           ) : (
             items.map((item, i) => (
-              <PocketCard key={item.slug || item.id || item.src || i} item={item} link={(item.slug || item.id) ? `/product/${item.slug || item.id}` : null} />
+              <PocketCard key={item.slug || item.id || item.src || i} item={item} link={item.id ? `/product/${item.id}` : null} />
             ))
           )}
         </div>

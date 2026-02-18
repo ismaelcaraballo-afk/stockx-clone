@@ -117,7 +117,7 @@ export default function ProductDetail() {
 
   return (
     <div className={styles.page}>
-      {showAR && <ARCamera onClose={() => setShowAR(false)} />}
+      {showAR && <ARCamera onClose={() => setShowAR(false)} productImage={product?.image_url} productName={product?.name} />}
 
       <div className={styles.left}>
         <div className={styles.viewToggle}>

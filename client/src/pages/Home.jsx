@@ -5,6 +5,7 @@ import ProductSlider from '../components/ProductSlider.jsx'
 import SearchBar from '../components/SearchBar.jsx'
 import { CardGridSkeleton } from '../components/Skeleton.jsx'
 import clothingData from '../data/clothing.json'
+import shoesData from '../data/shoes.json'
 import styles from './Home.module.css'
 
 export default function Home() {
@@ -20,7 +21,7 @@ export default function Home() {
     if (search) params.set('search', search)
     if (brand) params.set('brand', brand)
     if (sort) params.set('sort', sort)
-    api.get(`/api/products?${params}`).then((res) => {
+    api.get(`/api/products?${params}&limit=100`).then((res) => {
       setProducts(res.data)
       setLoading(false)
     })
@@ -38,6 +39,12 @@ export default function Home() {
   const clothingItems = Array.isArray(clothingData)
     ? clothingData.filter((item) => (item.src || '').startsWith('/Clothing/'))
     : []
+
+  // Build shoe slider items from Michael's data by brand
+  const nikeShoes = shoesData.NIKE || []
+  const adidasShoes = shoesData.ADIDAS || []
+  const nbShoes = shoesData.NEWBALANCE || []
+  const allShoes = shoesData.ALL || []
 
   return (
     <div className={styles.page}>
@@ -80,15 +87,27 @@ export default function Home() {
       {!loading && products.length === 0 && (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No sneakers found</p>
-          {search && <p className={styles.emptyDetail}>No results for "{search}"{brand ? ` in ${brand}` : ''}</p>}
+          {search && <p className={styles.emptyDetail}>No results for &ldquo;{search}&rdquo;{brand ? ` in ${brand}` : ''}</p>}
           {!search && brand && <p className={styles.emptyDetail}>No {brand} sneakers available right now</p>}
           {(search || brand) && (
             <button onClick={clearFilters} className={styles.clearBtn}>Clear Filters</button>
           )}
         </div>
       )}
+      {nikeShoes.length > 0 && (
+        <ProductSlider items={nikeShoes} title="Nike" variant="black" rows={2} />
+      )}
+      {adidasShoes.length > 0 && (
+        <ProductSlider items={adidasShoes} title="Adidas" variant="grey" rows={2} />
+      )}
+      {nbShoes.length > 0 && (
+        <ProductSlider items={nbShoes} title="New Balance" variant="black" rows={2} />
+      )}
+      {allShoes.length > 0 && (
+        <ProductSlider items={allShoes} title="All Brands" variant="grey" rows={2} />
+      )}
       {clothingItems.length > 0 && (
-        <ProductSlider items={clothingItems} title="Featured Apparel" variant="grey" rows={1} />
+        <ProductSlider items={clothingItems} title="Featured Apparel" variant="black" rows={1} />
       )}
     </div>
   )
