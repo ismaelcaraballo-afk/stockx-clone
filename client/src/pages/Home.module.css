@@ -4,6 +4,16 @@
   padding: 32px;
 }
 
+.offlineBanner {
+  background: rgba(8, 160, 92, 0.12);
+  border: 1px solid rgba(8, 160, 92, 0.3);
+  color: #08a05c;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
 .viewerSection {
   margin-bottom: 32px;
   position: relative;

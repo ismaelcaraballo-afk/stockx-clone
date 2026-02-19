@@ -18,7 +18,7 @@ export default function ProductCard({ product }) {
         <p className={styles.brand}>{product.brand}</p>
         <p className={styles.name}>{product.name}</p>
         <p className={styles.size}>Size: {product.size}</p>
-        <p className={styles.price}>${product.retail_price}</p>
+        <p className={styles.price}>{typeof product.retail_price === 'number' ? `$${product.retail_price}` : (product.retail_price || '—')}</p>
       </div>
     </Link>
   )

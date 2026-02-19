@@ -32,10 +32,10 @@ export default function Navbar() {
 
       <div className={`${styles.links} ${menuOpen ? styles.linksOpen : ''}`}>
         <Link to="/" onClick={closeMenu}>Browse</Link>
+        <Link to="/dashboard" onClick={closeMenu}>Dashboard</Link>
         {user ? (
           <>
             <Link to="/sell" className={styles.sellLink} onClick={closeMenu}>Sell</Link>
-            <Link to="/dashboard" onClick={closeMenu}>Dashboard</Link>
             <span className={styles.user}>{user.username}</span>
             <button onClick={() => { handleLogout(); closeMenu() }} className={styles.logoutBtn}>Logout</button>
           </>
