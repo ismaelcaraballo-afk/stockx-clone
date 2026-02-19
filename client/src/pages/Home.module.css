@@ -330,3 +330,14 @@
 .clearBtn:hover {
   background: #444;
 }
+
+.offlineBanner {
+  background: rgba(241, 196, 15, 0.15);
+  border: 1px solid rgba(241, 196, 15, 0.3);
+  color: #f1c40f;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 16px;
+}
