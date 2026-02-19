@@ -12,7 +12,7 @@ const Product = {
   },
 
   async findAll({ brand, category, search, sort, limit = 20, offset = 0 }) {
-    let query = "SELECT p.*, u.username as seller_name FROM products p JOIN users u ON p.seller_id = u.id WHERE 1=1";
+    let query = "SELECT p.*, u.username as seller_name FROM products p LEFT JOIN users u ON p.seller_id = u.id WHERE 1=1";
     const params = [];
     let idx = 1;
 
@@ -43,7 +43,7 @@ const Product = {
 
   async findById(id) {
     const result = await pool.query(
-      "SELECT p.*, u.username as seller_name FROM products p JOIN users u ON p.seller_id = u.id WHERE p.id = $1",
+      "SELECT p.*, u.username as seller_name FROM products p LEFT JOIN users u ON p.seller_id = u.id WHERE p.id = $1",
       [id]
     );
     return result.rows[0] || null;
