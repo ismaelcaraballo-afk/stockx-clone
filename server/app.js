@@ -52,4 +52,13 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// --- Production: serve React frontend ---
+if (process.env.NODE_ENV === "production") {
+  const path = require("path");
+  app.use(express.static(path.join(__dirname, "..", "client", "dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "client", "dist", "index.html"));
+  });
+}
+
 module.exports = app;
